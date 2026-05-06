@@ -1,110 +1,156 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>pugong'home</title>
-    <link rel="shortcut icon" href="images/favicon32.ico">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/poems.css">
-    <link rel="stylesheet" href="css/link-card.css">
-    <link rel="stylesheet" href="css/author.css">
-</head>
-
-<body>
-    <!-- 导航栏 -->
-    <div class="navbar">
-        <div class="logo">pugong's home</div>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>贪吃蛇</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-label="贪吃蛇游戏">
+      <section class="topbar" aria-label="游戏标题">
         <div>
-            <a href="/">首页</a>
-            <!-- <a href="about.html">关于我</a> -->
-            <a href="contact.html">联系我</a>
+          <h1>贪吃蛇</h1>
         </div>
-    </div>
+        <div class="scoreboard" aria-label="得分">
+          <div class="metric">
+            <span>分数</span>
+            <strong id="score">0</strong>
+          </div>
+          <div class="metric">
+            <span>最高分</span>
+            <strong id="bestScore">0</strong>
+          </div>
+          <div class="metric">
+            <span>等级</span>
+            <strong id="level">1</strong>
+          </div>
+        </div>
+      </section>
 
-    <!-- 主体内容 -->
-    <div class="main-content">
-        <!-- 侧边栏 -->
+      <section class="layout">
+        <aside class="panel status-panel" aria-label="本局状态">
+          <div class="panel-header">
+            <span class="dot"></span>
+            <h2>本局</h2>
+          </div>
+          <div class="stat-grid">
+            <div>
+              <span>长度</span>
+              <strong id="length">3</strong>
+            </div>
+            <div>
+              <span>连击</span>
+              <strong id="combo">x1</strong>
+            </div>
+            <div>
+              <span>速度</span>
+              <strong id="speed">1.0x</strong>
+            </div>
+          </div>
+          <div class="feed" aria-live="polite">
+            <p id="eventText">准备开始一局漂亮的走位。</p>
+            <div class="progress-track" aria-label="等级进度">
+              <span id="levelProgress"></span>
+            </div>
+          </div>
+        </aside>
 
-        <!-- 作者 -->
-        <div class="sidebar">
-            <div class="author-info">
-                <div class="author-avatar">
-                    <img src="images/1.jpg" alt="作者头像" class="avatar">
-                </div>
-                <div class="author-intro">
-                    <p class="name">pugong</p>
-                    <p class="sign">稻海家族大长老</p>
-                </div>
+        <section class="game-shell" aria-label="游戏棋盘">
+          <canvas id="board" width="600" height="600"></canvas>
+          <div class="overlay visible" id="overlay">
+            <div class="overlay-panel">
+              <p class="overlay-kicker" id="overlayKicker">准备</p>
+              <p class="overlay-title" id="overlayTitle">选择难度后开始游戏。</p>
+              <button class="primary-button" id="startButton" type="button">开始</button>
+            </div>
+          </div>
+        </section>
 
-                <!-- GitHub链接 -->
-                <div class="author-github">
-                    <a href="https://github.com/daohaipugong" target="_blank">
-                        <i class="fab fa-github"></i> github
-                    </a>
-                </div>
+        <aside class="panel options-panel" aria-label="游戏设置">
+          <div class="settings-top">
+            <div class="panel-header">
+              <span class="dot alt"></span>
+              <h2>设置</h2>
             </div>
 
-            <!-- 今日诗词 -->
-            <div id="poem">
-                <script src="https://sdk.jinrishici.com/v2/browser/jinrishici.js" charset="utf-8"></script>
-                <div id="poem_sentence"></div>
-                <div id="poem_info"></div>
-                <script type="text/javascript">
-                    jinrishici.load(function (result) {
-                        var sentence = document.querySelector("#poem_sentence")
-                        var info = document.querySelector("#poem_info")
-                        sentence.innerHTML = result.data.content
-                        info.innerHTML = '【' + result.data.origin.dynasty + '】' + result.data.origin.author + '《' + result.data.origin.title + '》'
-                    });
-                </script>
+            <div class="option-group">
+              <span class="option-title">难度</span>
+              <div class="segmented" id="difficultyGroup" role="group" aria-label="难度">
+                <button class="segment active" data-difficulty="chill" type="button">轻松</button>
+                <button class="segment" data-difficulty="rush" type="button">冲刺</button>
+                <button class="segment" data-difficulty="pro" type="button">高手</button>
+              </div>
             </div>
 
-            <!-- 工具链接 -->
-            <div class="link-card">
-                <h2>工具链接</h2>
-                <a href="https://www.latexlive.com/" target="_blank">在线LaTeX公式编辑器</a>
-                <a href="https://webrename.cn/" target="_blank">在线文件批量重命名工具</a>
-                <a href="https://maoshu.fun/vscode" target="_blank">VSCode 代码片段生成器</a>
-                <!-- <h2>其它链接</h2>
-                <a href="007/index.html">霍小姐</a> -->
+            <div class="option-group">
+              <span class="option-title">皮肤</span>
+              <div class="skin-grid" id="skinGroup" role="group" aria-label="蛇皮肤">
+                <button class="skin-card active" data-skin="bamboo" type="button" aria-label="青竹皮肤">
+                  <span class="skin-swatch bamboo"></span>
+                  <strong>青竹</strong>
+                </button>
+                <button class="skin-card" data-skin="neon" type="button" aria-label="霓虹皮肤">
+                  <span class="skin-swatch neon"></span>
+                  <strong>霓虹</strong>
+                </button>
+                <button class="skin-card" data-skin="lava" type="button" aria-label="熔岩皮肤">
+                  <span class="skin-swatch lava"></span>
+                  <strong>熔岩</strong>
+                </button>
+                <button class="skin-card" data-skin="glacier" type="button" aria-label="冰川皮肤">
+                  <span class="skin-swatch glacier"></span>
+                  <strong>冰川</strong>
+                </button>
+                <button class="skin-card" data-skin="candy" type="button" aria-label="糖果皮肤">
+                  <span class="skin-swatch candy"></span>
+                  <strong>糖果</strong>
+                </button>
+                <button class="skin-card" data-skin="shadow" type="button" aria-label="暗影皮肤">
+                  <span class="skin-swatch shadow"></span>
+                  <strong>暗影</strong>
+                </button>
+                <button class="skin-card" data-skin="royal" type="button" aria-label="皇家皮肤">
+                  <span class="skin-swatch royal"></span>
+                  <strong>皇家</strong>
+                </button>
+                <button class="skin-card" data-skin="circuit" type="button" aria-label="电路皮肤">
+                  <span class="skin-swatch circuit"></span>
+                  <strong>电路</strong>
+                </button>
+              </div>
             </div>
-        </div>
+          </div>
 
-        <!-- 内容区 -->
-        <div class="content">
-            <h2>欢迎来到 pugong 的小站</h2>
-            希望和悲伤，都是一缕光，总有一天，我们会再相遇。
-            <blockquote style="line-height: 1.3;">
-                我不去想是否能够成功
-                既然选择了远方
-                便只顾风雨兼程
+          <div class="settings-bottom">
+            <div class="option-row">
+              <label for="soundToggle">音乐与音效</label>
+              <input id="soundToggle" type="checkbox" checked />
+            </div>
 
-                我不去想能否赢得爱情
-                既然钟情于玫瑰
-                就勇敢地吐露真诚
+            <div class="controls" aria-label="游戏控制">
+              <button class="icon-button" id="pauseButton" type="button" aria-label="暂停或继续" title="暂停或继续">
+                <span id="pauseIcon">></span>
+              </button>
+              <button class="text-button" id="restartButton" type="button">重新开始</button>
+            </div>
+          </div>
+        </aside>
+      </section>
 
-                我不去想身后会不会袭来寒风冷雨
-                既然目标是地平线
-                留给世界的只能是背影
+      <section class="pad" aria-label="方向键">
+        <button class="pad-button up" data-direction="up" type="button" aria-label="向上移动">&uarr;</button>
+        <button class="pad-button left" data-direction="left" type="button" aria-label="向左移动">&larr;</button>
+        <button class="pad-button center" id="mobilePauseButton" type="button" aria-label="暂停或继续">></button>
+        <button class="pad-button right" data-direction="right" type="button" aria-label="向右移动">&rarr;</button>
+        <button class="pad-button down" data-direction="down" type="button" aria-label="向下移动">&darr;</button>
+      </section>
+    </main>
 
-                我不去想未来是平坦还是泥泞
-                只要热爱生命
-
-                一切，都在意料之中
-            </blockquote>
-            <blockquote style="text-align: center; font-size: 17px;">
-                --《热爱生命》汪国真
-            </blockquote>
-        </div>
-    </div>
-
-    <!-- 页脚 -->
-    <div class="footer">
-        <p>&copy;2025 pugong</p>
-    </div>
-</body>
-
+    <script src="scripts/config.js"></script>
+    <script src="scripts/storage.js"></script>
+    <script src="scripts/audio.js"></script>
+    <script src="scripts/render.js"></script>
+    <script src="scripts/game.js"></script>
+  </body>
 </html>
