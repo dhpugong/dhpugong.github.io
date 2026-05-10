@@ -10,7 +10,8 @@
   <body>
     <main class="app" aria-label="贪吃蛇游戏">
       <section class="topbar" aria-label="游戏标题">
-        <div>
+        <div class="brand">
+          <img class="brand-logo" src="logo.svg" alt="" aria-hidden="true" />
           <h1>贪吃蛇</h1>
         </div>
         <div class="scoreboard" aria-label="得分">
@@ -39,10 +40,6 @@
             <div>
               <span>长度</span>
               <strong id="length">3</strong>
-            </div>
-            <div>
-              <span>连击</span>
-              <strong id="combo">x1</strong>
             </div>
             <div>
               <span>速度</span>
@@ -81,49 +78,84 @@
                 <button class="segment active" data-difficulty="chill" type="button">轻松</button>
                 <button class="segment" data-difficulty="rush" type="button">冲刺</button>
                 <button class="segment" data-difficulty="pro" type="button">高手</button>
+                <button class="segment" data-difficulty="hell" type="button">地狱</button>
               </div>
             </div>
 
             <div class="option-group">
-              <span class="option-title">皮肤</span>
-              <div class="skin-grid" id="skinGroup" role="group" aria-label="蛇皮肤">
-                <button class="skin-card active" data-skin="bamboo" type="button" aria-label="青竹皮肤">
-                  <span class="skin-swatch bamboo"></span>
-                  <strong>青竹</strong>
+              <span class="option-title">模式</span>
+              <div class="segmented two-segments" id="wallModeGroup" role="group" aria-label="穿墙模式">
+                <button class="segment active" data-wall-mode="wrap" type="button">可穿墙</button>
+                <button class="segment" data-wall-mode="solid" type="button">不可穿墙</button>
+              </div>
+            </div>
+
+            <div class="option-group">
+              <span class="option-title" id="skinSelectLabel">皮肤</span>
+              <div class="skin-select" id="skinSelect" data-open="false">
+                <button class="skin-select-trigger" id="skinSelectTrigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="skinSelectLabel skinSelectLabelText">
+                  <span id="skinSelectLabelText">青竹</span>
+                  <span class="skin-option-swatch" aria-hidden="true"></span>
                 </button>
-                <button class="skin-card" data-skin="neon" type="button" aria-label="霓虹皮肤">
-                  <span class="skin-swatch neon"></span>
-                  <strong>霓虹</strong>
-                </button>
-                <button class="skin-card" data-skin="lava" type="button" aria-label="熔岩皮肤">
-                  <span class="skin-swatch lava"></span>
-                  <strong>熔岩</strong>
-                </button>
-                <button class="skin-card" data-skin="glacier" type="button" aria-label="冰川皮肤">
-                  <span class="skin-swatch glacier"></span>
-                  <strong>冰川</strong>
-                </button>
-                <button class="skin-card" data-skin="candy" type="button" aria-label="糖果皮肤">
-                  <span class="skin-swatch candy"></span>
-                  <strong>糖果</strong>
-                </button>
-                <button class="skin-card" data-skin="shadow" type="button" aria-label="暗影皮肤">
-                  <span class="skin-swatch shadow"></span>
-                  <strong>暗影</strong>
-                </button>
-                <button class="skin-card" data-skin="royal" type="button" aria-label="皇家皮肤">
-                  <span class="skin-swatch royal"></span>
-                  <strong>皇家</strong>
-                </button>
-                <button class="skin-card" data-skin="circuit" type="button" aria-label="电路皮肤">
-                  <span class="skin-swatch circuit"></span>
-                  <strong>电路</strong>
-                </button>
+                <div class="skin-select-menu" role="listbox" aria-labelledby="skinSelectLabel">
+                  <button class="skin-option" data-skin="bamboo" type="button" role="option" aria-selected="true">
+                    <span>青竹</span>
+                    <span class="skin-option-swatch bamboo" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="neon" type="button" role="option">
+                    <span>霓虹</span>
+                    <span class="skin-option-swatch neon" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="lava" type="button" role="option">
+                    <span>熔岩</span>
+                    <span class="skin-option-swatch lava" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="glacier" type="button" role="option">
+                    <span>冰川</span>
+                    <span class="skin-option-swatch glacier" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="candy" type="button" role="option">
+                    <span>糖果</span>
+                    <span class="skin-option-swatch candy" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="shadow" type="button" role="option">
+                    <span>暗影</span>
+                    <span class="skin-option-swatch shadow" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="royal" type="button" role="option">
+                    <span>皇家</span>
+                    <span class="skin-option-swatch royal" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="circuit" type="button" role="option">
+                    <span>电路</span>
+                    <span class="skin-option-swatch circuit" aria-hidden="true"></span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
           <div class="settings-bottom">
+            <div class="option-row">
+              <label for="aiToggle">AI 控制</label>
+              <input id="aiToggle" type="checkbox" />
+            </div>
+
+            <div class="option-group">
+              <span class="option-title" id="aiAlgorithmSelectLabel">AI 算法</span>
+              <div class="ai-select" id="aiAlgorithmSelect" data-open="false">
+                <button class="ai-select-trigger" id="aiAlgorithmSelectTrigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="aiAlgorithmSelectLabel aiAlgorithmSelectLabelText">
+                  <span id="aiAlgorithmSelectLabelText">预判</span>
+                </button>
+                <div class="ai-select-menu" role="listbox" aria-labelledby="aiAlgorithmSelectLabel">
+                  <button class="ai-option" data-ai-algorithm="greedy" type="button" role="option">贪心</button>
+                  <button class="ai-option" data-ai-algorithm="bfs" type="button" role="option">BFS</button>
+                  <button class="ai-option active" data-ai-algorithm="lookahead" type="button" role="option" aria-selected="true">预判</button>
+                  <button class="ai-option" data-ai-algorithm="neural" type="button" role="option">深度学习</button>
+                </div>
+              </div>
+            </div>
+
             <div class="option-row">
               <label for="soundToggle">音乐与音效</label>
               <input id="soundToggle" type="checkbox" checked />
@@ -148,10 +180,6 @@
       </section>
     </main>
 
-    <script src="scripts/config.js"></script>
-    <script src="scripts/storage.js"></script>
-    <script src="scripts/audio.js"></script>
-    <script src="scripts/render.js"></script>
-    <script src="scripts/game.js"></script>
+    <script type="module" src="scripts/main.js"></script>
   </body>
 </html>

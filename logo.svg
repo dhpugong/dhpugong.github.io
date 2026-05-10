@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Snake game icon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Snake game logo</title>
+  <desc id="desc">A bright snake mark on a dark game board.</desc>
   <defs>
     <linearGradient id="snakeGradient" x1="25" y1="94" x2="96" y2="30" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#36bc73" />
@@ -9,11 +11,27 @@
       <stop offset="0" stop-color="#263842" />
       <stop offset="1" stop-color="#10171b" />
     </radialGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#84f06a" flood-opacity="0.48" />
+    </filter>
   </defs>
+
   <rect width="128" height="128" rx="28" fill="url(#boardGlow)" />
   <path d="M24 32H104M24 64H104M24 96H104M32 24V104M64 24V104M96 24V104" stroke="#34414a" stroke-width="2" stroke-linecap="round" opacity="0.36" />
-  <circle cx="30" cy="34" r="8" fill="#ffd166" />
-  <path d="M31 94C49 105 82 99 82 77C82 59 48 64 48 45C48 28 70 22 92 32" fill="none" stroke="url(#snakeGradient)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="30" cy="34" r="7" fill="#ffd166" />
+  <circle cx="30" cy="34" r="11" fill="none" stroke="#ffd166" stroke-width="2" opacity="0.24" />
+
+  <path
+    d="M31 94C49 105 82 99 82 77C82 59 48 64 48 45C48 28 70 22 92 32"
+    fill="none"
+    stroke="url(#snakeGradient)"
+    stroke-width="18"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    filter="url(#softGlow)"
+  />
+  <circle cx="31" cy="94" r="6" fill="#36bc73" />
+
   <g transform="translate(94 33) rotate(18)">
     <rect x="-11" y="-10" width="29" height="22" rx="11" fill="#b8ff87" />
     <circle cx="8" cy="-3" r="2.3" fill="#08100c" />
