@@ -463,6 +463,10 @@ canvas {
   gap: 6px;
 }
 
+.ai-select-menu {
+  max-height: 138px;
+}
+
 .skin-option,
 .ai-option {
   min-height: 38px;

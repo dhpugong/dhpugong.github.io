@@ -77,6 +77,10 @@ export const storage = {
   loadAiAlgorithm() {
     try {
       const storedAlgorithm = localStorage.getItem(aiAlgorithmStorageKey);
+      if (storedAlgorithm === "adversarial") {
+        return "reinforcement";
+      }
+
       return aiAlgorithms[storedAlgorithm] ? storedAlgorithm : "lookahead";
     } catch {
       return "lookahead";

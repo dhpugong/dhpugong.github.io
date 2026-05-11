@@ -7,7 +7,7 @@
 - 四档难度：轻松、冲刺、高手、地狱。
 - 两种边界模式：可穿墙、不可穿墙。
 - 多套蛇身皮肤，皮肤下拉框带颜色预览。
-- AI 控制模式，支持贪心、BFS、预判、深度学习四种算法。
+- AI 控制模式，支持贪心、BFS、预判、安全路径、深度学习、强化学习六种算法。
 - AI 单局评分系统，用 0-100 分和 S/A/B/C/D 评级比较算法表现。
 - 普通果实和奖励果实两种得分来源。
 - 音乐与音效开关、暂停、重新开始、触控方向键。
@@ -45,7 +45,11 @@ scripts/config.js   难度、皮肤、方向、穿墙模式、AI 算法等配置
 scripts/state.js    默认游戏状态
 scripts/rules.js    移动、碰撞、食物、粒子、分数等规则
 scripts/score.js    AI 单局评分统计和评级计算
-scripts/ai.js       贪心、BFS、Lookahead、神经网络四种 AI 决策算法
+scripts/ai.js       AI 入口，提供 chooseDirection 和 countLegalMoves
+scripts/aiAlgorithms.js  贪心、BFS、Lookahead、安全路径、神经网络、强化学习六种 AI 决策算法
+scripts/aiShared.js      AI 共用的方向、合法走法、BFS、模拟、距离和可达空间工具
+scripts/aiFeatures.js    神经网络和强化学习共用的局面特征、即时奖励计算
+scripts/aiNetworks.js    内置神经网络权重和前端推理函数
 scripts/render.js   Canvas 绘制
 scripts/ui.js       HUD、遮罩层、下拉框和按钮状态同步
 scripts/input.js    键盘、触摸、方向按钮输入
@@ -71,14 +75,23 @@ scripts/storage.js  localStorage 读写
 
 ## AI 算法
 
-AI 算法在 `scripts/ai.js` 中通过注册表维护：
+AI 对外入口在 `scripts/ai.js`，游戏主流程只调用：
+
+```js
+chooseDirection(state, algorithmName);
+countLegalMoves(state);
+```
+
+具体算法在 `scripts/aiAlgorithms.js` 中通过注册表维护：
 
 ```js
 export const aiAlgorithms = {
   greedy: chooseGreedyDirection,
   bfs: chooseBfsDirection,
   lookahead: chooseLookaheadDirection,
+  safe: chooseSafePathDirection,
   neural: chooseNeuralDirection,
+  reinforcement: chooseReinforcementLearningDirection,
 };
 ```
 
@@ -87,13 +100,9 @@ export const aiAlgorithms = {
 - 贪心 AI：从合法方向中选择离食物最近的一步。
 - BFS 最短路 AI：用 BFS 找到蛇头到食物的最短路径，并执行路径第一步。
 - Lookahead AI：对每个合法方向模拟下一步，综合食物距离、可活动空间、未来可选方向、墙边压力和危险状态评分。
+- 安全路径 AI：先验证吃到食物后是否还能追到尾巴；不安全时追尾保命，最后选择活动空间最大的合法方向。
 - 深度学习 AI：使用内置小型神经网络权重，对食物进度、可活动空间、未来可选方向、尾部可达性、墙边压力等特征做前端推理，并在合法方向中选择分数最高的一步。
-
-统一入口是：
-
-```js
-chooseDirection(state, algorithmName);
-```
+- 强化学习 AI：使用内置 Q-value 近似策略，把吃到食物、靠近食物、安全空间、尾部可达性和危险惩罚合成即时奖励，再结合未来价值选择方向。
 
 `state` 包含：
 
@@ -147,7 +156,7 @@ D: 0-39
 
 新增 AI 算法：
 
-在 `scripts/ai.js` 中新增算法函数，并注册到 `aiAlgorithms`；同时在 `scripts/config.js` 的 `aiAlgorithms` 增加显示名称，再在 `index.html` 的 AI 下拉菜单里添加对应 `data-ai-algorithm` 选项。
+在 `scripts/aiAlgorithms.js` 中新增算法函数，并注册到 `aiAlgorithms`；如果需要共用寻路、距离、模拟等能力，优先从 `scripts/aiShared.js` 引入。然后在 `scripts/config.js` 的 `aiAlgorithms` 增加显示名称，再在 `index.html` 的 AI 下拉菜单里添加对应 `data-ai-algorithm` 选项。
 
 新增模式：
 
@@ -161,7 +170,8 @@ D: 0-39
 
 - 配置集中放在 `scripts/config.js`。
 - 游戏规则优先放在 `scripts/rules.js`。
-- AI 决策优先放在 `scripts/ai.js`。
+- AI 入口保持在 `scripts/ai.js`，具体决策优先放在 `scripts/aiAlgorithms.js`。
+- AI 共用工具优先放在 `scripts/aiShared.js`，神经网络权重放在 `scripts/aiNetworks.js`，特征工程放在 `scripts/aiFeatures.js`。
 - AI 评分优先放在 `scripts/score.js`。
 - DOM 更新优先放在 `scripts/ui.js`。
 - 输入和设置事件分别放在 `scripts/input.js`、`scripts/settings.js`。

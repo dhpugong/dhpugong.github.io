@@ -26,7 +26,9 @@ export const config = {
     greedy: { label: "贪心", description: "每步选择离食物最近的方向。" },
     bfs: { label: "BFS", description: "寻找通往食物的最短路径。" },
     lookahead: { label: "预判", description: "模拟未来走势并按安全和效率评分。" },
+    safe: { label: "安全路径", description: "安全吃食物、追尾保命并优先保留活动空间。" },
     neural: { label: "深度学习", description: "使用内置神经网络权重为合法方向打分。" },
+    reinforcement: { label: "强化学习", description: "使用 Q-value 近似策略评估即时奖励与未来价值。" },
   },
   skins: {
     bamboo: {
