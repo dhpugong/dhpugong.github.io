@@ -1,0 +1,324 @@
+:root {
+  color-scheme: dark;
+  --bg: #090b10;
+  --panel: rgba(18, 24, 31, 0.9);
+  --panel-strong: rgba(24, 34, 44, 0.96);
+  --line: rgba(201, 225, 255, 0.18);
+  --text: #f7fbff;
+  --muted: #aeb9c8;
+  --p1: #83ff71;
+  --p2: #62d8ff;
+  --danger: #ff5f7e;
+  --gold: #ffd166;
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    linear-gradient(130deg, rgba(131, 255, 113, 0.13), transparent 34%),
+    linear-gradient(230deg, rgba(98, 216, 255, 0.13), transparent 38%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 82px),
+    var(--bg);
+  color: var(--text);
+  font-family:
+    "Microsoft YaHei", "PingFang SC", "Noto Sans SC", ui-sans-serif, system-ui,
+    sans-serif;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+p,
+h1,
+h2 {
+  margin: 0;
+}
+
+.arena-app {
+  width: min(100%, 1180px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 14px;
+}
+
+.topbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.eyebrow {
+  margin-bottom: 6px;
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: clamp(2.25rem, 6vw, 4.6rem);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.home-link,
+.primary-button,
+.ghost-button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.home-link,
+.ghost-button {
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+}
+
+.home-link:hover,
+.ghost-button:hover {
+  border-color: rgba(255, 209, 102, 0.58);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.hud-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
+}
+
+.fighter-status,
+.round-clock,
+.control-card,
+.overlay-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.fighter-status {
+  min-width: 0;
+  padding: 12px;
+}
+
+.fighter-status.right {
+  text-align: right;
+}
+
+.fighter-status span,
+.round-clock span,
+.control-card h2,
+.overlay-panel p {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fighter-status strong {
+  display: block;
+  margin: 4px 0 10px;
+  font-size: 1.05rem;
+}
+
+.health-track {
+  height: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.health-track span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 160ms ease;
+}
+
+#p1Health {
+  background: linear-gradient(90deg, var(--p1), #2fc778);
+}
+
+#p2Health {
+  margin-left: auto;
+  background: linear-gradient(90deg, #208dc7, var(--p2));
+}
+
+.round-clock {
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  text-align: center;
+}
+
+.round-clock strong {
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--gold);
+}
+
+.stage-shell {
+  position: relative;
+  min-height: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #080b10;
+  box-shadow: var(--shadow);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  touch-action: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5, 7, 10, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+.overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.overlay-panel {
+  width: min(90%, 430px);
+  padding: 24px;
+  text-align: center;
+  background: rgba(18, 24, 31, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.overlay-panel h2 {
+  margin: 8px 0 18px;
+  font-size: clamp(1.45rem, 4vw, 2.2rem);
+  line-height: 1.18;
+}
+
+.primary-button {
+  min-width: 150px;
+  padding: 0 18px;
+  border-color: rgba(131, 255, 113, 0.55);
+  background: linear-gradient(135deg, var(--p1), #2fc778);
+  color: #06120b;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr minmax(190px, 0.72fr);
+  gap: 10px;
+}
+
+.control-card {
+  padding: 12px;
+}
+
+.control-card p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+kbd {
+  min-width: 26px;
+  min-height: 24px;
+  margin: 0 3px;
+  padding: 2px 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font: inherit;
+  font-weight: 900;
+}
+
+.actions div {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .arena-app {
+    padding: 14px;
+  }
+
+  .topbar,
+  .hud-panel,
+  .control-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: start;
+  }
+
+  .fighter-status.right {
+    text-align: left;
+  }
+
+  #p2Health {
+    margin-left: 0;
+  }
+}

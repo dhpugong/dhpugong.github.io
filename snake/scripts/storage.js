@@ -46,11 +46,14 @@ function writeJson(key, value) {
 }
 
 export const storage = {
-  loadBestScore() {
-    return readNumber(scoreStorageKey, 0);
+  getBestScoreKey(wallMode) {
+    return `${scoreStorageKey}-${wallModes[wallMode] ? wallMode : "wrap"}`;
   },
-  saveBestScore(score) {
-    writeValue(scoreStorageKey, score);
+  loadBestScore(wallMode) {
+    return readNumber(this.getBestScoreKey(wallMode), 0);
+  },
+  saveBestScore(wallMode, score) {
+    writeValue(this.getBestScoreKey(wallMode), score);
   },
   loadSkin() {
     try {

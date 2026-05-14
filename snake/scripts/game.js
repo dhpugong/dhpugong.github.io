@@ -186,7 +186,6 @@ export function createGame() {
     audio.playTone(180, 0.24, 0.07, "sawtooth");
     updateHud(elements, game, getBaseTick, `本局结束，得分 ${game.score}。`);
     render();
-    showOverlay(elements, "游戏结束", `本局 ${game.score} 分，最高 ${game.bestScore} 分。`, "再来一局");
     showOverlay(elements, "游戏结束", createGameOverText(rating), "再来一局");
     updatePauseIcon(elements, game);
   }
@@ -213,7 +212,7 @@ export function createGame() {
   function updateBestScore() {
     if (game.score > game.bestScore) {
       game.bestScore = game.score;
-      storage.saveBestScore(game.bestScore);
+      storage.saveBestScore(game.wallMode, game.bestScore);
     }
   }
 
@@ -264,9 +263,15 @@ export function createGame() {
     }
 
     game.wallMode = nextWallMode;
+    game.bestScore = storage.loadBestScore(game.wallMode);
     syncWallModeButtons(game);
     storage.saveWallMode(game.wallMode);
-    updateHud(elements, game, getBaseTick, `已切换为${config.wallModes[game.wallMode].label}模式。`);
+    updateHud(
+      elements,
+      game,
+      getBaseTick,
+      `已切换为${config.wallModes[game.wallMode].label}模式，当前模式最高分 ${game.bestScore}。`,
+    );
   }
 
   function setAiEnabled(enabled) {
@@ -313,6 +318,7 @@ export function createGame() {
 
     if (ateFood) {
       game.aiStats.foodsEaten += 1;
+      game.aiStats.totalFoodIntervalSteps += game.aiStats.currentNoFoodStreak + 1;
       game.aiStats.currentNoFoodStreak = 0;
     } else {
       game.aiStats.currentNoFoodStreak += 1;
@@ -322,10 +328,16 @@ export function createGame() {
       );
     }
 
-    if (countLegalMoves(createAiSnapshot(game)) <= 1) {
+    const legalMoveCount = countLegalMoves(createAiSnapshot(game));
+    game.aiStats.legalMoveTotal += legalMoveCount;
+
+    if (legalMoveCount <= 1) {
       game.aiStats.dangerTicks += 1;
     }
 
+    if (legalMoveCount <= 2) {
+      game.aiStats.tightTicks += 1;
+    }
   }
 
   function finishAiRating() {
@@ -348,7 +360,7 @@ export function createGame() {
     }
 
     const algorithmLabel = config.aiAlgorithms[rating.algorithmName]?.label || rating.algorithmName;
-    return `${baseText} AI ${algorithmLabel} 评分 ${rating.total} (${rating.grade})；得分 ${rating.parts.score} / 生存 ${rating.parts.survival} / 效率 ${rating.parts.efficiency} / 安全 ${rating.parts.safety} / 稳定 ${rating.parts.stability}`;
+    return `${baseText} AI ${algorithmLabel}：${rating.total} 分（${rating.grade}）。`;
   }
 
   function syncSound() {
@@ -394,10 +406,10 @@ export function createGame() {
   function init() {
     bindEvents();
     resetGame();
-    setSkin(game.skinName);
-    setWallMode(game.wallMode);
+    syncSkinButtons(game);
+    syncWallModeButtons(game);
     syncAiAlgorithmButtons(game);
-    setAiEnabled(false);
+    syncAiToggle(elements, game);
   }
 
   return { init };

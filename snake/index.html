@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>贪吃蛇</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <main class="app" aria-label="贪吃蛇游戏">
+      <section class="topbar" aria-label="游戏标题">
+        <div class="brand">
+          <img class="brand-logo" src="../logo.svg" alt="" aria-hidden="true" />
+          <h1>贪吃蛇</h1>
+        </div>
+        <div class="top-actions">
+          <a class="home-link" href="../" aria-label="返回 AI 项目实验室">项目导航</a>
+          <div class="scoreboard" aria-label="得分">
+            <div class="metric">
+              <span>分数</span>
+              <strong id="score">0</strong>
+            </div>
+            <div class="metric">
+              <span>模式最高</span>
+              <strong id="bestScore">0</strong>
+            </div>
+            <div class="metric">
+              <span>等级</span>
+              <strong id="level">1</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="layout">
+        <aside class="panel status-panel" aria-label="本局状态">
+          <div class="panel-header">
+            <span class="dot"></span>
+            <h2>本局</h2>
+          </div>
+          <div class="stat-grid">
+            <div>
+              <span>长度</span>
+              <strong id="length">3</strong>
+            </div>
+            <div>
+              <span>速度</span>
+              <strong id="speed">1.0x</strong>
+            </div>
+          </div>
+          <div class="feed" aria-live="polite">
+            <p id="eventText">准备开始一局漂亮的走位。</p>
+            <div class="progress-track" aria-label="等级进度">
+              <span id="levelProgress"></span>
+            </div>
+          </div>
+        </aside>
+
+        <section class="game-shell" aria-label="游戏棋盘">
+          <canvas id="board" width="600" height="600"></canvas>
+          <div class="overlay visible" id="overlay">
+            <div class="overlay-panel">
+              <p class="overlay-kicker" id="overlayKicker">准备</p>
+              <p class="overlay-title" id="overlayTitle">选择难度后开始游戏。</p>
+              <button class="primary-button" id="startButton" type="button">开始</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel options-panel" aria-label="游戏设置">
+          <div class="settings-top">
+            <div class="panel-header">
+              <span class="dot alt"></span>
+              <h2>设置</h2>
+            </div>
+
+            <div class="option-group">
+              <span class="option-title">难度</span>
+              <div class="segmented" id="difficultyGroup" role="group" aria-label="难度">
+                <button class="segment active" data-difficulty="chill" type="button">轻松</button>
+                <button class="segment" data-difficulty="rush" type="button">冲刺</button>
+                <button class="segment" data-difficulty="pro" type="button">高手</button>
+                <button class="segment" data-difficulty="hell" type="button">地狱</button>
+              </div>
+            </div>
+
+            <div class="option-group">
+              <span class="option-title">模式</span>
+              <div class="segmented two-segments" id="wallModeGroup" role="group" aria-label="穿墙模式">
+                <button class="segment active" data-wall-mode="wrap" type="button">可穿墙</button>
+                <button class="segment" data-wall-mode="solid" type="button">不可穿墙</button>
+              </div>
+            </div>
+
+            <div class="option-group">
+              <span class="option-title" id="skinSelectLabel">皮肤</span>
+              <div class="skin-select" id="skinSelect" data-open="false">
+                <button class="skin-select-trigger" id="skinSelectTrigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="skinSelectLabel skinSelectLabelText">
+                  <span id="skinSelectLabelText">青竹</span>
+                  <span class="skin-option-swatch" aria-hidden="true"></span>
+                </button>
+                <div class="skin-select-menu" role="listbox" aria-labelledby="skinSelectLabel">
+                  <button class="skin-option" data-skin="bamboo" type="button" role="option" aria-selected="true">
+                    <span>青竹</span>
+                    <span class="skin-option-swatch bamboo" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="neon" type="button" role="option">
+                    <span>霓虹</span>
+                    <span class="skin-option-swatch neon" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="lava" type="button" role="option">
+                    <span>熔岩</span>
+                    <span class="skin-option-swatch lava" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="glacier" type="button" role="option">
+                    <span>冰川</span>
+                    <span class="skin-option-swatch glacier" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="candy" type="button" role="option">
+                    <span>糖果</span>
+                    <span class="skin-option-swatch candy" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="shadow" type="button" role="option">
+                    <span>暗影</span>
+                    <span class="skin-option-swatch shadow" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="royal" type="button" role="option">
+                    <span>皇家</span>
+                    <span class="skin-option-swatch royal" aria-hidden="true"></span>
+                  </button>
+                  <button class="skin-option" data-skin="circuit" type="button" role="option">
+                    <span>电路</span>
+                    <span class="skin-option-swatch circuit" aria-hidden="true"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-bottom">
+            <div class="option-row">
+              <label for="aiToggle">AI 控制</label>
+              <input id="aiToggle" type="checkbox" />
+            </div>
+
+            <div class="option-group">
+              <span class="option-title" id="aiAlgorithmSelectLabel">AI 算法</span>
+              <div class="ai-select" id="aiAlgorithmSelect" data-open="false">
+                <button class="ai-select-trigger" id="aiAlgorithmSelectTrigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="aiAlgorithmSelectLabel aiAlgorithmSelectLabelText">
+                  <span id="aiAlgorithmSelectLabelText">预判</span>
+                </button>
+                <div class="ai-select-menu" role="listbox" aria-labelledby="aiAlgorithmSelectLabel">
+                  <button class="ai-option" data-ai-algorithm="greedy" type="button" role="option">贪心</button>
+                  <button class="ai-option" data-ai-algorithm="bfs" type="button" role="option">BFS</button>
+                  <button class="ai-option active" data-ai-algorithm="lookahead" type="button" role="option" aria-selected="true">预判</button>
+                  <button class="ai-option" data-ai-algorithm="safe" type="button" role="option">安全路径</button>
+                  <button class="ai-option" data-ai-algorithm="neural" type="button" role="option">深度学习</button>
+                  <button class="ai-option" data-ai-algorithm="reinforcement" type="button" role="option">强化学习</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="option-row">
+              <label for="soundToggle">音乐与音效</label>
+              <input id="soundToggle" type="checkbox" checked />
+            </div>
+
+            <div class="controls" aria-label="游戏控制">
+              <button class="icon-button" id="pauseButton" type="button" aria-label="暂停或继续" title="暂停或继续">
+                <span id="pauseIcon">></span>
+              </button>
+              <button class="text-button" id="restartButton" type="button">重新开始</button>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="pad" aria-label="方向键">
+        <button class="pad-button up" data-direction="up" type="button" aria-label="向上移动">&uarr;</button>
+        <button class="pad-button left" data-direction="left" type="button" aria-label="向左移动">&larr;</button>
+        <button class="pad-button center" id="mobilePauseButton" type="button" aria-label="暂停或继续">></button>
+        <button class="pad-button right" data-direction="right" type="button" aria-label="向右移动">&rarr;</button>
+        <button class="pad-button down" data-direction="down" type="button" aria-label="向下移动">&darr;</button>
+      </section>
+    </main>
+
+    <script type="module" src="scripts/main.js"></script>
+  </body>
+</html>

@@ -3,6 +3,8 @@ import { createAiStats } from "./score.js";
 import { storage } from "./storage.js";
 
 export function createGameState() {
+  const wallMode = storage.loadWallMode();
+
   return {
     snake: [],
     foods: [],
@@ -11,7 +13,7 @@ export function createGameState() {
     nextDirection: config.directions.right,
     directionChangedThisTick: false,
     score: 0,
-    bestScore: storage.loadBestScore(),
+    bestScore: storage.loadBestScore(wallMode),
     level: 1,
     eatenCount: 0,
     tickMs: config.difficulties.chill.baseTick,
@@ -19,7 +21,7 @@ export function createGameState() {
     state: "ready",
     difficulty: "chill",
     skinName: storage.loadSkin(),
-    wallMode: storage.loadWallMode(),
+    wallMode,
     aiEnabled: false,
     aiAlgorithm: storage.loadAiAlgorithm(),
     aiStats: createAiStats(),

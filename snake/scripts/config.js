@@ -5,7 +5,7 @@ export const config = {
   skinStorageKey: "snake-selected-skin",
   wallModeStorageKey: "snake-wall-mode",
   aiAlgorithmStorageKey: "snake-ai-algorithm",
-  aiRatingsStorageKey: "snake-ai-ratings",
+  aiRatingsStorageKey: "snake-ai-ratings-v2",
   directions: {
     up: { x: 0, y: -1 },
     down: { x: 0, y: 1 },

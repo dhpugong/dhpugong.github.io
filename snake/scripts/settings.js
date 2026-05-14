@@ -42,12 +42,25 @@ export function bindSettings({
       closeAiMenu(elements);
     }
   });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    closeSkinMenu(elements);
+    closeAiMenu(elements);
+  });
 }
 
 function toggleSkinMenu(elements) {
+  if (!elements.skinSelect) {
+    return;
+  }
+
   const isOpen = elements.skinSelect.dataset.open === "true";
   elements.skinSelect.dataset.open = String(!isOpen);
-  elements.skinSelectTrigger.setAttribute("aria-expanded", String(!isOpen));
+  elements.skinSelectTrigger?.setAttribute("aria-expanded", String(!isOpen));
 }
 
 function closeSkinMenu(elements) {
@@ -60,9 +73,13 @@ function closeSkinMenu(elements) {
 }
 
 function toggleAiMenu(elements) {
+  if (!elements.aiAlgorithmSelect) {
+    return;
+  }
+
   const isOpen = elements.aiAlgorithmSelect.dataset.open === "true";
   elements.aiAlgorithmSelect.dataset.open = String(!isOpen);
-  elements.aiAlgorithmSelectTrigger.setAttribute("aria-expanded", String(!isOpen));
+  elements.aiAlgorithmSelectTrigger?.setAttribute("aria-expanded", String(!isOpen));
 }
 
 function closeAiMenu(elements) {

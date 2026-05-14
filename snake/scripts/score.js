@@ -13,8 +13,11 @@ export function createAiStats() {
     stepsSurvived: 0,
     foodsEaten: 0,
     dangerTicks: 0,
+    tightTicks: 0,
+    legalMoveTotal: 0,
     longestNoFoodStreak: 0,
     currentNoFoodStreak: 0,
+    totalFoodIntervalSteps: 0,
     deathReason: "",
     algorithmName: "lookahead",
     scoreAtStart: 0,
@@ -24,9 +27,8 @@ export function createAiStats() {
 export function calculateAiRating(game) {
   const stats = game.aiStats;
   const baseScore = config.difficulties[game.difficulty].score;
-  const scoreTarget = baseScore * 120;
   const scoreDelta = Math.max(0, game.score - (stats.scoreAtStart || 0));
-  const scorePart = clamp((scoreDelta / scoreTarget) * 100);
+  const scorePart = calculateScorePart(scoreDelta, baseScore);
   const survivalPart = calculateSurvivalPart(game, stats);
   const efficiencyPart = calculateEfficiencyPart(stats);
   const safetyPart = calculateSafetyPart(stats);
@@ -53,11 +55,15 @@ export function calculateAiRating(game) {
   };
 }
 
+function calculateScorePart(scoreDelta, baseScore) {
+  const scoreUnits = baseScore > 0 ? scoreDelta / baseScore : 0;
+  return softCap(scoreUnits, 180);
+}
+
 function calculateSurvivalPart(game, stats) {
-  const stepPart = clamp((stats.stepsSurvived / 2500) * 70);
-  const lengthPart = clamp(((game.snake.length - 3) / 100) * 25);
-  const deathPenalty = stats.deathReason ? 15 : 0;
-  return clamp(stepPart + lengthPart + 5 - deathPenalty);
+  const stepPart = softCap(stats.stepsSurvived, 1800) * 0.75;
+  const lengthPart = softCap(Math.max(0, game.snake.length - 3), 80) * 0.25;
+  return clamp(stepPart + lengthPart - deathPenalty(stats.deathReason));
 }
 
 function calculateEfficiencyPart(stats) {
@@ -66,7 +72,7 @@ function calculateEfficiencyPart(stats) {
   }
 
   const foodsPerHundredSteps = (stats.foodsEaten / stats.stepsSurvived) * 100;
-  return clamp((foodsPerHundredSteps / 5) * 100);
+  return softCap(foodsPerHundredSteps, 4);
 }
 
 function calculateSafetyPart(stats) {
@@ -75,15 +81,21 @@ function calculateSafetyPart(stats) {
   }
 
   const dangerRatio = stats.dangerTicks / stats.stepsSurvived;
-  return clamp(100 - dangerRatio * 250);
+  const tightRatio = (stats.tightTicks || 0) / stats.stepsSurvived;
+  const averageLegalMoves = (stats.legalMoveTotal || 0) / stats.stepsSurvived;
+  const legalMovePart = clamp(((averageLegalMoves - 1) / 2) * 100);
+  return clamp(100 - dangerRatio * 360 - tightRatio * 85 + legalMovePart * 0.18);
 }
 
 function calculateStabilityPart(stats) {
-  if (stats.longestNoFoodStreak <= 60) {
-    return 100;
+  if (stats.foodsEaten <= 0) {
+    return 0;
   }
 
-  return clamp(100 - ((stats.longestNoFoodStreak - 60) / 240) * 100);
+  const averageFoodInterval = (stats.totalFoodIntervalSteps || stats.stepsSurvived) / stats.foodsEaten;
+  const averageIntervalPart = 100 * Math.exp(-Math.max(0, averageFoodInterval - 20) / 95);
+  const longestStreakPart = 100 * Math.exp(-Math.max(0, stats.longestNoFoodStreak - 45) / 150);
+  return clamp(averageIntervalPart * 0.7 + longestStreakPart * 0.3);
 }
 
 function gradeRating(total) {
@@ -108,4 +120,24 @@ function gradeRating(total) {
 
 function clamp(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
+}
+
+function softCap(value, scale) {
+  if (value <= 0) {
+    return 0;
+  }
+
+  return clamp(100 * (1 - Math.exp(-value / scale)));
+}
+
+function deathPenalty(reason) {
+  if (reason === "snake") {
+    return 18;
+  }
+
+  if (reason === "wall") {
+    return 12;
+  }
+
+  return reason ? 15 : 0;
 }
