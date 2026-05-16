@@ -2,7 +2,7 @@ import { CONFIG, FACTIONS, TERRAIN, TROOP_TYPES } from "./config.js";
 import { getBattleTitle } from "./battle.js";
 import { getTerrainById } from "./map.js";
 import { hasSave } from "./save.js";
-import { addButton, drawButton, drawHud, drawMenuUi, drawSettingsUi, drawTownUi } from "./ui.js";
+import { addButton, drawArmyUi, drawButton, drawHud, drawMenuUi, drawSettingsUi, drawTownUi } from "./ui.js";
 import { drawBar, drawPanel, drawPixelText, clamp } from "./utils.js";
 
 // 渲染模块：使用像素精灵绘制地图、单位和战斗场景，保持 Canvas 结构清晰。
@@ -45,6 +45,9 @@ export function renderGame(renderer, game) {
   }
   if (game.state === "menu") {
     drawMenuUi(ctx, game);
+  }
+  if (game.state === "army") {
+    drawArmyUi(ctx, game);
   }
   if (game.state === "settings") {
     drawSettingsUi(ctx, game);

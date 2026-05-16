@@ -3,7 +3,7 @@ import { FACTION_GROWTH_RANGES } from "../data/factionGrowth.js";
 import { applyRandomGeneralAttributes } from "./generals.js";
 import { findNearestTown, findOpenPosition, isPassable } from "./map.js";
 import { addWarReport } from "./reports.js";
-import { createArmy, createWildArmy, getArmyPower } from "./troop.js";
+import { createArmy, createWildArmy, getArmyPower, upgradeArmyByBudget } from "./troop.js";
 import { distanceXY, moveToward, pick, rand, randInt } from "./utils.js";
 
 // AI 模块：NPC 游荡、野怪巡逻、索敌和攻城行为都集中在这里。
@@ -120,6 +120,9 @@ export function growFactionTowns(game) {
       { type: curve.primary, count: Math.ceil((curve.primaryCount + nextLevel * curve.scale) * scale), level: troopLevel, xp: 0, morale: curve.morale },
       { type: curve.secondary, count: Math.ceil((curve.secondaryCount + nextLevel * curve.scale * 0.5) * scale), level: troopLevel, xp: 0, morale: curve.morale - 2 }
     ]);
+    if (Math.random() < curve.upgradeChance) {
+      town.garrison = upgradeArmyByBudget(town.garrison, Math.max(1, Math.floor(curve.upgradeBudget * scale))).army;
+    }
     if (town.general) {
       town.general.level = Math.max(town.general.level || 1, Math.floor(nextLevel));
       town.general.faction = town.owner;
@@ -146,6 +149,9 @@ function updateNpcGrowth(npc, game, dt) {
     { type: curve.secondary, count: curve.secondaryCount + Math.floor(npc.level * curve.scale * 0.6), level: troopLevel, xp: 0, morale: curve.morale - 2 }
   ];
   npc.army = createArmy([...(npc.army || []), ...additions]);
+  if (Math.random() < curve.upgradeChance) {
+    npc.army = upgradeArmyByBudget(npc.army, curve.upgradeBudget).army;
+  }
 
   if (npc.stationed && Math.random() < curve.mobilizeChance) {
     npc.stationed = false;
@@ -169,6 +175,8 @@ function getGrowthCurve(faction, kind) {
     secondary: data.secondary,
     primaryCount: randInt(data.primaryCount.min, data.primaryCount.max),
     secondaryCount: randInt(data.secondaryCount.min, data.secondaryCount.max),
+    upgradeChance: rand(data.upgradeChance.min, data.upgradeChance.max),
+    upgradeBudget: randInt(data.upgradeBudget.min, data.upgradeBudget.max),
     scale: rand(data.scale.min, data.scale.max),
     morale: randInt(data.morale.min, data.morale.max),
     mobilizeChance: rand(data.mobilizeChance.min, data.mobilizeChance.max)

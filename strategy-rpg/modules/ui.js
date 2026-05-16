@@ -1,7 +1,7 @@
 import { FACTIONS } from "./config.js";
 import { WEAPONS } from "./config.js";
 import { expToNextLevel, getTownDailyIncome, spendSkillPoint } from "./player.js";
-import { getArmyPower, getArmySize, getMaxArmySize, getRecruitOptions, getRosterLines, isArmyMoraleFull } from "./troop.js";
+import { getArmyPower, getArmySize, getMaxArmySize, getMaxTroopLevel, getRecruitOptions, getRosterLines, getTroopLevelStats, getTroopUpgradeCost, isArmyMoraleFull, upgradeArmyStack } from "./troop.js";
 import { getGarrisonUpgradeCost, improveDefense, leaveTown, recruitFromTown, restAtTown, upgradeGarrison } from "./town.js";
 import { drawBar, drawPanel, drawPixelText, formatNumber, rectContains } from "./utils.js";
 
@@ -102,6 +102,7 @@ export function drawHud(ctx, game) {
   drawBar(ctx, 78, 68, 206, 5, game.elapsedDayTimer / game.dayLength, "#ffd56a", "#28170c", "#5f3f17");
   drawPixelText(ctx, Math.ceil(Math.max(0, game.dayLength - game.elapsedDayTimer)) + "秒", 294, 63, "#b9a77a", 10);
 
+  addButton(game.ui, 786, 18, 72, 32, "军队", "army");
   addButton(game.ui, 868, 18, 72, 32, "设置", "settings");
   for (const btn of game.ui.buttons) {
     drawButton(ctx, btn, game.input);
@@ -346,6 +347,55 @@ export function drawMenuUi(ctx, game) {
   }
 }
 
+// ==================== 军队管理 ====================
+
+export function drawArmyUi(ctx, game) {
+  clearButtons(game.ui);
+
+  drawPanel(ctx, 176, 48, 608, 444, "军队管理");
+  drawPixelText(ctx, "金币 " + formatNumber(game.player.gold), 214, 84, "#ffd56a", 14);
+  drawPixelText(ctx, "兵力 " + getArmySize(game.player.army) + "/" + getMaxArmySize(game.player), 344, 84, "#d9f0ff", 14);
+  drawPixelText(ctx, "战力 " + Math.round(getArmyPower(game.player.army)), 484, 84, "#f8e9bd", 14);
+
+  drawPixelText(ctx, "部队", 214, 122, "#b9a77a", 11);
+  drawPixelText(ctx, "当前属性", 380, 122, "#b9a77a", 11);
+  drawPixelText(ctx, "下级属性", 540, 122, "#b9a77a", 11);
+
+  if (!game.player.army.length) {
+    drawPixelText(ctx, "暂无部队", 480, 236, "#b9a77a", 16, "center");
+  }
+
+  game.player.army.forEach(function (unit, index) {
+    const y = 146 + index * 58;
+    const type = getTroopLevelStats(unit.type, unit.level);
+    const maxLevel = getMaxTroopLevel(unit.type);
+    const next = unit.level < maxLevel ? getTroopLevelStats(unit.type, unit.level + 1) : null;
+    const cost = getTroopUpgradeCost(unit);
+
+    ctx.fillStyle = "rgba(255,255,255,0.03)";
+    ctx.fillRect(206, y - 8, 540, 48);
+    ctx.fillStyle = type.color;
+    ctx.fillRect(216, y, 24, 24);
+    drawPixelText(ctx, type.name + " Lv." + unit.level, 252, y - 2, type.color, 14);
+    drawPixelText(ctx, "x" + unit.count + " 士气" + unit.morale, 252, y + 18, "#d7c89e", 10);
+    drawPixelText(ctx, formatTroopStats(type), 380, y + 2, "#f8e9bd", 10);
+    drawPixelText(ctx, next ? formatTroopStats(next) : "已满级", 540, y + 2, next ? "#d9f0ff" : "#b9a77a", 10);
+
+    const disabled = !next || game.player.gold < cost;
+    addButton(game.ui, 646, y + 4, 86, 28, next ? "升级 " + cost : "满级", "upgradeTroop:" + index, disabled);
+  });
+
+  addButton(game.ui, 370, 438, 220, 34, "返回大地图", "closeArmy");
+
+  for (var i = 0; i < game.ui.buttons.length; i++) {
+    drawButton(ctx, game.ui.buttons[i], game.input);
+  }
+}
+
+function formatTroopStats(stats) {
+  return "攻" + stats.attack + " 防" + stats.defense + " 血" + stats.hp + " 速" + stats.speed;
+}
+
 // ==================== 设置界面 ====================
 
 export function drawSettingsUi(ctx, game) {
@@ -432,7 +482,16 @@ export function handleUiAction(game, action) {
     game.message = "属性界面：查看装备、分配技能点、管理存档";
     return true;
   }
+  if (action === "army") {
+    game.state = "army";
+    game.message = "军队管理：花费金币升级部队";
+    return true;
+  }
   if (action === "closeMenu") {
+    game.state = "world";
+    return true;
+  }
+  if (action === "closeArmy") {
     game.state = "world";
     return true;
   }
@@ -490,6 +549,18 @@ export function handleUiAction(game, action) {
   if (action.indexOf("recruit:") === 0) {
     var parts = action.split(":");
     recruitFromTown(game, parts[1], Number(parts[2]));
+    return true;
+  }
+  if (action.indexOf("upgradeTroop:") === 0) {
+    var stackIndex = Number(action.split(":")[1]);
+    var result = upgradeArmyStack(game.player, stackIndex);
+    game.notice = {
+      title: result.ok ? "升级完成" : "无法升级",
+      lines: [result.message],
+      timer: 1.8,
+      duration: 1.8,
+      kind: "gold"
+    };
     return true;
   }
   if (action.indexOf("attr:") === 0) {

@@ -374,7 +374,8 @@ function damageUnit(battle, unit, amount, sourceType) {
     unit.deathTimer = 0;
     const side = unit.side === "left" ? "player" : "enemy";
     if (unit.type !== "general") {
-      battle.casualties[side][unit.type] = (battle.casualties[side][unit.type] || 0) + 1;
+      const key = getCasualtyKey(unit);
+      battle.casualties[side][key] = (battle.casualties[side][key] || 0) + 1;
     }
     battle.effects.push({
       type: "death", x: unit.x, y: unit.y,
@@ -563,6 +564,10 @@ function rollWeaponDrop(game, battle) {
 
 function countCasualties(map) {
   return Object.values(map || {}).reduce((sum, value) => sum + value, 0);
+}
+
+function getCasualtyKey(unit) {
+  return unit.type + ":" + Math.max(1, Math.floor(unit.stackLevel || 1));
 }
 
 export function finishBattle(game) {

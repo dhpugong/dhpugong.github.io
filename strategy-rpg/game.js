@@ -99,7 +99,7 @@ function updateGame(dt) {
 
   if (game.state === "world") {
     updateWorld(dt, click);
-  } else if (game.state === "town" || game.state === "menu" || game.state === "settings" || game.state === "encounter") {
+  } else if (game.state === "town" || game.state === "menu" || game.state === "army" || game.state === "settings" || game.state === "encounter") {
     updateCamera(game.camera, game.player, game.map);
   }
 
@@ -122,6 +122,9 @@ function handleGlobalShortcuts() {
     } else if (game.state === "settings") {
       game.state = game.previousState && game.previousState !== "settings" ? game.previousState : "world";
       game.previousState = null;
+    } else if (game.state === "army") {
+      game.state = "world";
+      game.message = "回到大地图";
     } else if (game.state === "town") {
       game.state = "world";
       game.activeTown = null;

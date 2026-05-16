@@ -6,6 +6,8 @@ export const FACTION_GROWTH_RANGES = {
     secondary: "archer",
     primaryCount: { min: 1, max: 3 },
     secondaryCount: { min: 1, max: 2 },
+    upgradeChance: { min: 0.1, max: 0.18 },
+    upgradeBudget: { min: 1, max: 2 },
     scale: { min: 0.8, max: 1.2 },
     morale: { min: 60, max: 66 },
     mobilizeChance: { min: 0, max: 0 }
@@ -17,6 +19,8 @@ export const FACTION_GROWTH_RANGES = {
     secondary: "infantry",
     primaryCount: { min: 2, max: 4 },
     secondaryCount: { min: 3, max: 6 },
+    upgradeChance: { min: 0.24, max: 0.38 },
+    upgradeBudget: { min: 2, max: 5 },
     scale: { min: 1.0, max: 1.45 },
     morale: { min: 73, max: 79 },
     mobilizeChance: { min: 0.2, max: 0.35 }
@@ -28,6 +32,8 @@ export const FACTION_GROWTH_RANGES = {
     secondary: "mage",
     primaryCount: { min: 3, max: 5 },
     secondaryCount: { min: 1, max: 2 },
+    upgradeChance: { min: 0.22, max: 0.34 },
+    upgradeBudget: { min: 2, max: 4 },
     scale: { min: 0.85, max: 1.2 },
     morale: { min: 71, max: 77 },
     mobilizeChance: { min: 0.15, max: 0.28 }
@@ -39,6 +45,8 @@ export const FACTION_GROWTH_RANGES = {
     secondary: "infantry",
     primaryCount: { min: 1, max: 3 },
     secondaryCount: { min: 2, max: 4 },
+    upgradeChance: { min: 0.12, max: 0.22 },
+    upgradeBudget: { min: 1, max: 3 },
     scale: { min: 0.55, max: 0.85 },
     morale: { min: 65, max: 70 },
     mobilizeChance: { min: 0.06, max: 0.16 }
