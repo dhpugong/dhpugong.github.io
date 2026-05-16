@@ -364,12 +364,44 @@ export function drawSettingsUi(ctx, game) {
   drawPixelText(ctx, "存档", 336, 206, "#ffd56a", 15);
   addButton(game.ui, 336, 240, 132, 34, "保存游戏", "save");
   addButton(game.ui, 492, 240, 132, 34, "读取存档", "load");
+  drawPixelText(ctx, "兑换码", 336, 292, "#ffd56a", 15);
+  addButton(game.ui, 492, 284, 132, 34, "输入兑换码", "openPrivilege");
   addButton(game.ui, 336, 342, 132, 36, "返回游戏", "closeSettings");
   addButton(game.ui, 492, 342, 132, 36, "返回主界面", "backToStart");
 
-  for (const btn of game.ui.buttons) {
-    drawButton(ctx, btn, game.input);
+  const baseButtonCount = game.ui.buttons.length;
+  for (let i = 0; i < baseButtonCount; i += 1) {
+    drawButton(ctx, game.ui.buttons[i], game.input);
   }
+
+  if (game.privilege && game.privilege.open) {
+    game.ui.buttons.length = 0;
+    drawPrivilegeDialog(ctx, game);
+    for (let i = 0; i < game.ui.buttons.length; i += 1) {
+      drawButton(ctx, game.ui.buttons[i], game.input);
+    }
+  }
+}
+
+function drawPrivilegeDialog(ctx, game) {
+  const value = game.privilege.input || "";
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(0, 0, 960, 540);
+  drawPanel(ctx, 304, 176, 352, 188, "兑换码");
+  drawPixelText(ctx, "请输入兑换码", 480, 210, "#ffd56a", 16, "center");
+  ctx.fillStyle = "#110b05";
+  ctx.fillRect(348, 246, 264, 34);
+  ctx.strokeStyle = "#8f682e";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(348.5, 246.5, 264, 34);
+  drawPixelText(ctx, value || " ", 360, 254, value ? "#f8e9bd" : "#6f6048", 15);
+  if (Math.floor(Date.now() / 450) % 2 === 0) {
+    const cursorX = Math.min(596, 362 + value.length * 9);
+    ctx.fillStyle = "#ffd56a";
+    ctx.fillRect(cursorX, 254, 2, 18);
+  }
+  addButton(game.ui, 360, 310, 104, 34, "兑换", "redeemPrivilege");
+  addButton(game.ui, 496, 310, 104, 34, "取消", "closePrivilege");
 }
 
 function drawEquipmentSlot(ctx, x, y, label, item, color) {
@@ -407,6 +439,16 @@ export function handleUiAction(game, action) {
   if (action === "settings") {
     game.previousState = game.state === "settings" ? "world" : game.state;
     game.state = "settings";
+    return true;
+  }
+  if (action === "openPrivilege") {
+    game.privilege = { open: true, input: "", busy: false };
+    return true;
+  }
+  if (action === "closePrivilege") {
+    if (game.privilege) {
+      game.privilege.open = false;
+    }
     return true;
   }
   if (action === "closeSettings") {

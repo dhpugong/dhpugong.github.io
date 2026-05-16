@@ -5,6 +5,7 @@ import { rectContains } from "./utils.js";
 export function createInput(canvas) {
   const input = {
     keys: new Set(),
+    textEvents: [],
     mouse: { x: 0, y: 0, down: false, clicked: false, worldClick: null },
     lastAction: null
   };
@@ -14,6 +15,16 @@ export function createInput(canvas) {
     const code = event.code.toLowerCase();
     input.keys.add(key);
     input.keys.add(code);
+    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      input.textEvents.push({ type: "char", value: event.key });
+    } else if (key === "backspace") {
+      input.textEvents.push({ type: "backspace" });
+      event.preventDefault();
+    } else if (key === "enter") {
+      input.textEvents.push({ type: "enter" });
+    } else if (key === "escape") {
+      input.textEvents.push({ type: "escape" });
+    }
     if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright", "keyw", "keya", "keys", "keyd"].includes(key) || ["space", "arrowup", "arrowdown", "arrowleft", "arrowright", "keyw", "keya", "keys", "keyd"].includes(code)) {
       event.preventDefault();
     }
@@ -72,6 +83,15 @@ export function consumeClick(input) {
   }
   input.mouse.clicked = false;
   return { x: input.mouse.x, y: input.mouse.y };
+}
+
+export function consumeTextInput(input) {
+  if (!input.textEvents.length) {
+    return [];
+  }
+  const events = input.textEvents.slice();
+  input.textEvents.length = 0;
+  return events;
 }
 
 export function consumeKey(input, key) {

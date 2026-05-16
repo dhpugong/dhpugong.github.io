@@ -2,7 +2,7 @@ import { createInitialNpcs, growFactionTowns, spawnWildIfNeeded, updateNpcs } fr
 import { finishBattle, fleeBattle, startBattle, updateBattle } from "./modules/battle.js";
 import { createCamera, screenToWorld, updateCamera } from "./modules/camera.js";
 import { CONFIG } from "./modules/config.js";
-import { consumeClick, consumeKey, createInput, getMovementVector } from "./modules/input.js";
+import { consumeClick, consumeKey, consumeTextInput, createInput, getMovementVector } from "./modules/input.js";
 import { clampToMap, ensurePassablePosition, findNearestResource, findNearestTown, findSafeStep, getTile, isPassable } from "./modules/map.js";
 import { createPlayer, processNewDay, refreshOwnedResources, refreshOwnedTowns } from "./modules/player.js";
 import { addWarReport } from "./modules/reports.js";
@@ -17,6 +17,8 @@ import { getClickedButton, handleUiAction } from "./modules/ui.js";
 // 所有业务逻辑归到各模块中，只在本文件做调度。
 
 const WORLD_MOVE_SPEED_MULTIPLIER = 1.3;
+const PRIVILEGE_FILE = "./privilege.txt";
+const PRIVILEGE_USED_KEY = CONFIG.saveKey + "-privilege-used";
 
 var canvas = document.querySelector("#gameCanvas");
 var renderer = createRenderer(canvas);
@@ -41,6 +43,7 @@ var game = {
   battle: null,
   pendingEncounter: null,
   encounter: null,
+  privilege: { open: false, input: "", busy: false },
   message: "点击地面移动，WASD 行军。靠近城镇按 E 进入，按 R 攻城。",
   log: ["探索大陆、招募扩军、攻城收税、统一全境", "提示：ESC 打开军务菜单 | F5 保存 | F9 读档"],
   reports: [],
@@ -79,6 +82,7 @@ function getTargetFps() {
 
 function updateGame(dt) {
   updateNotice(dt);
+  handlePrivilegeInput();
   handleGlobalShortcuts();
 
   var click = consumeClick(input);
@@ -110,7 +114,9 @@ function handleGlobalShortcuts() {
   }
 
   if (consumeKey(input, "escape")) {
-    if (game.state === "menu") {
+    if (game.privilege && game.privilege.open) {
+      game.privilege.open = false;
+    } else if (game.state === "menu") {
       game.state = "world";
       game.message = "回到大地图";
     } else if (game.state === "settings") {
@@ -197,6 +203,10 @@ function handleUiClick(click) {
   }
   if (button.action === "load") {
     loadIntoCurrentGame();
+    return true;
+  }
+  if (button.action === "redeemPrivilege") {
+    redeemPrivilegeCode();
     return true;
   }
   if (button.action && button.action.indexOf("setFps:") === 0) {
@@ -506,6 +516,95 @@ function loadSettings() {
 
 function saveSettings(nextSettings) {
   localStorage.setItem(CONFIG.saveKey + "-settings", JSON.stringify(nextSettings));
+}
+
+function handlePrivilegeInput() {
+  const events = consumeTextInput(input);
+  if (!game.privilege || !game.privilege.open || !events.length) {
+    return;
+  }
+  for (const event of events) {
+    if (event.type === "char") {
+      game.privilege.input = (game.privilege.input + event.value).slice(0, 32);
+    } else if (event.type === "backspace") {
+      game.privilege.input = game.privilege.input.slice(0, -1);
+    } else if (event.type === "enter") {
+      redeemPrivilegeCode();
+    } else if (event.type === "escape") {
+      game.privilege.open = false;
+      input.keys.delete("escape");
+    }
+  }
+}
+
+async function redeemPrivilegeCode() {
+  if (!game.privilege || !game.privilege.open || game.privilege.busy) {
+    return;
+  }
+  const inputCode = (game.privilege.input || "").trim();
+  if (!inputCode) {
+    setNotice("兑换失败", ["请输入兑换码"], 1.6, "gold");
+    return;
+  }
+
+  game.privilege.busy = true;
+  try {
+    const response = await fetch(PRIVILEGE_FILE, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error("privilege file not found");
+    }
+    const text = await response.text();
+    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const code = lines[0] || "";
+    const gold = Math.max(0, Math.floor(Number(lines[1] || 0)));
+    if (!code || gold <= 0) {
+      setNotice("兑换失败", ["兑换码配置无效"], 1.8, "gold");
+      return;
+    }
+    if (inputCode !== code) {
+      setNotice("兑换失败", ["兑换码不正确"], 1.8, "gold");
+      return;
+    }
+    if (hasUsedPrivilegeCode(code)) {
+      setNotice("已兑换", ["该兑换码已经使用过"], 1.8, "gold");
+      return;
+    }
+    markPrivilegeCodeUsed(code);
+    game.player.gold += gold;
+    game.privilege.open = false;
+    game.privilege.input = "";
+    setNotice("兑换成功", ["金币 +" + gold], 2, "gold");
+  } catch (error) {
+    console.warn("兑换码读取失败", error);
+    setNotice("兑换失败", ["无法读取 privilege.txt"], 1.8, "gold");
+  } finally {
+    if (game.privilege) {
+      game.privilege.busy = false;
+    }
+  }
+}
+
+function hasUsedPrivilegeCode(code) {
+  try {
+    const used = JSON.parse(localStorage.getItem(PRIVILEGE_USED_KEY) || "[]");
+    return Array.isArray(used) && used.includes(code);
+  } catch (error) {
+    return false;
+  }
+}
+
+function markPrivilegeCodeUsed(code) {
+  let used = [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PRIVILEGE_USED_KEY) || "[]");
+    used = Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    used = [];
+  }
+  if (!used.includes(code)) {
+    used.push(code);
+  }
+  localStorage.setItem(PRIVILEGE_USED_KEY, JSON.stringify(used));
 }
 
 function updateNotice(dt) {

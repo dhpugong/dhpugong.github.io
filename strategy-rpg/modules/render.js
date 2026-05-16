@@ -1103,7 +1103,7 @@ function drawBattleUi(ctx, game, battle) {
   }
 
   if (!battle.ended) {
-    const fleeButton = addButton(game.ui, 806, 40, 92, 30, "逃跑", "fleeBattle");
+    const fleeButton = addButton(game.ui, 54, 474, 92, 30, "逃跑", "fleeBattle");
     drawButton(ctx, fleeButton, game.input);
   }
 
