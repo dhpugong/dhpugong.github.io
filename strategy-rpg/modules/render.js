@@ -1102,6 +1102,11 @@ function drawBattleUi(ctx, game, battle) {
     drawBar(ctx, 384, 54, 192, 6, ratio, "#ffd56a", "#c94f3f", "#2a1a0a");
   }
 
+  if (!battle.ended) {
+    const fleeButton = addButton(game.ui, 806, 40, 92, 30, "逃跑", "fleeBattle");
+    drawButton(ctx, fleeButton, game.input);
+  }
+
   if (battle.ended) {
     drawBattleSummary(ctx, game, battle);
   }
@@ -1110,11 +1115,12 @@ function drawBattleUi(ctx, game, battle) {
 function drawBattleSummary(ctx, game, battle) {
   const summary = battle.summary;
   const isWin = battle.result === "win";
+  const fled = battle.result === "flee";
   ctx.fillStyle = "rgba(0,0,0,0.58)";
   ctx.fillRect(20, 20, 920, 500);
 
-  drawPanel(ctx, 310, 130, 340, 250, isWin ? "战斗胜利" : "战斗失败");
-  drawPixelText(ctx, isWin ? "胜利！" : "战败", 480, 158, isWin ? "#ffd56a" : "#ff8a74", 28, "center");
+  drawPanel(ctx, 310, 130, 340, 250, isWin ? "战斗胜利" : fled ? "撤退成功" : "战斗失败");
+  drawPixelText(ctx, isWin ? "胜利！" : fled ? "撤退" : "战败", 480, 158, isWin ? "#ffd56a" : fled ? "#f8e9bd" : "#ff8a74", 28, "center");
 
   const lines = summary && summary.lines && summary.lines.length
     ? summary.lines

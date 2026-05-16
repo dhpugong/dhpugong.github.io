@@ -266,11 +266,10 @@ export function drawTownUi(ctx, game) {
     drawPixelText(ctx, type.role, 272, y, "#b9a77a", 11);
     drawPixelText(ctx, type.cost + " 金/人   生命 " + type.hp + "   攻击 " + type.attack, 212, y + 18, "#d7c89e", 10);
 
-    const townHostile = town.owner !== "player" && town.kind === "castle";
     const cannotBuy3 = game.player.gold < type.cost * 3;
     const cannotBuy10 = game.player.gold < type.cost * 10;
-    addButton(game.ui, 586, y, 76, 28, "招募x3", "recruit:" + type.id + ":3", townHostile || cannotBuy3);
-    addButton(game.ui, 670, y, 76, 28, "招募x10", "recruit:" + type.id + ":10", townHostile || cannotBuy10);
+    addButton(game.ui, 586, y, 76, 28, "招募x3", "recruit:" + type.id + ":3", cannotBuy3);
+    addButton(game.ui, 670, y, 76, 28, "招募x10", "recruit:" + type.id + ":10", cannotBuy10);
   });
 
   // 我军编制
@@ -365,7 +364,8 @@ export function drawSettingsUi(ctx, game) {
   drawPixelText(ctx, "存档", 336, 206, "#ffd56a", 15);
   addButton(game.ui, 336, 240, 132, 34, "保存游戏", "save");
   addButton(game.ui, 492, 240, 132, 34, "读取存档", "load");
-  addButton(game.ui, 386, 342, 188, 36, "返回游戏", "closeSettings");
+  addButton(game.ui, 336, 342, 132, 36, "返回游戏", "closeSettings");
+  addButton(game.ui, 492, 342, 132, 36, "返回主界面", "backToStart");
 
   for (const btn of game.ui.buttons) {
     drawButton(ctx, btn, game.input);
@@ -412,6 +412,21 @@ export function handleUiAction(game, action) {
   if (action === "closeSettings") {
     game.state = game.previousState && game.previousState !== "settings" ? game.previousState : "world";
     game.previousState = null;
+    return true;
+  }
+  if (action === "backToStart") {
+    game.state = "start";
+    game.previousState = null;
+    game.activeTown = null;
+    game.nearTown = null;
+    game.nearResource = null;
+    game.capturingResource = null;
+    game.battle = null;
+    game.pendingEncounter = null;
+    game.encounter = null;
+    if (game.player) {
+      game.player.target = null;
+    }
     return true;
   }
   if (action === "leaveTown") {

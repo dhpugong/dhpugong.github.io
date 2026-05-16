@@ -1,4 +1,5 @@
 import { CONFIG } from "./config.js";
+import { TOWN_INCOME, RESOURCE_INCOME } from "../data/economy.js";
 import { createInitialNpcs } from "./ai.js";
 import { createWorldMap, ensurePassablePosition } from "./map.js";
 import { applyRandomGeneralAttributes } from "./generals.js";
@@ -60,6 +61,9 @@ export function applySaveToGame(game, data) {
   const freshMap = createWorldMap();
   mergeTemplateItems(freshMap.towns, data.towns);
   freshMap.towns.forEach(function (town) {
+    if (Object.prototype.hasOwnProperty.call(TOWN_INCOME, town.id)) {
+      town.taxBase = TOWN_INCOME[town.id];
+    }
     if (!town.garrisonLevel) {
       town.garrisonLevel = 1;
     }
@@ -69,6 +73,11 @@ export function applySaveToGame(game, data) {
     applyRandomGeneralAttributes(town.general);
   });
   mergeTemplateItems(freshMap.resources, data.resources);
+  freshMap.resources.forEach(function (resource) {
+    if (Object.prototype.hasOwnProperty.call(RESOURCE_INCOME, resource.id)) {
+      resource.income = RESOURCE_INCOME[resource.id];
+    }
+  });
   game.map = freshMap;
   game.player = data.player || createPlayer();
   if (!game.player.general) {

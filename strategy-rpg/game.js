@@ -1,5 +1,5 @@
 import { createInitialNpcs, growFactionTowns, spawnWildIfNeeded, updateNpcs } from "./modules/ai.js";
-import { finishBattle, startBattle, updateBattle } from "./modules/battle.js";
+import { finishBattle, fleeBattle, startBattle, updateBattle } from "./modules/battle.js";
 import { createCamera, screenToWorld, updateCamera } from "./modules/camera.js";
 import { CONFIG } from "./modules/config.js";
 import { consumeClick, consumeKey, createInput, getMovementVector } from "./modules/input.js";
@@ -15,6 +15,8 @@ import { getClickedButton, handleUiAction } from "./modules/ui.js";
 
 // 铁冠诸侯 — 游戏入口。负责拼装模块、状态机和主循环。
 // 所有业务逻辑归到各模块中，只在本文件做调度。
+
+const WORLD_MOVE_SPEED_MULTIPLIER = 1.3;
 
 var canvas = document.querySelector("#gameCanvas");
 var renderer = createRenderer(canvas);
@@ -152,6 +154,11 @@ function handleUiClick(click) {
     game.player.target = null;
     return true;
   }
+  if (button.action === "fleeBattle") {
+    fleeBattle(game);
+    game.player.target = null;
+    return true;
+  }
   if (button.action === "acceptEncounter") {
     acceptEncounter();
     return true;
@@ -232,7 +239,7 @@ function updatePlayerMovement(dt, click) {
     movePlayerBy(movement.dx, movement.dy, dt);
   } else if (game.player.target) {
     var terrain = getTile(game.map, game.player.x, game.player.y);
-    var speed = CONFIG.playerSpeed * terrain.speed;
+    var speed = CONFIG.playerSpeed * WORLD_MOVE_SPEED_MULTIPLIER * terrain.speed;
     var oldX = game.player.x;
     var oldY = game.player.y;
     var arrived = moveToward(game.player, game.player.target.x, game.player.target.y, speed, dt);
@@ -267,7 +274,7 @@ function updatePlayerMovement(dt, click) {
 function movePlayerBy(dx, dy, dt) {
   ensurePassablePosition(game.map, game.player);
   var terrain = getTile(game.map, game.player.x, game.player.y);
-  var speed = CONFIG.playerSpeed * terrain.speed;
+  var speed = CONFIG.playerSpeed * WORLD_MOVE_SPEED_MULTIPLIER * terrain.speed;
   var oldX = game.player.x;
   var oldY = game.player.y;
   var nextX = oldX + dx * speed * dt;

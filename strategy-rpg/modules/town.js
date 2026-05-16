@@ -108,10 +108,6 @@ export function recruitFromTown(game, typeId, count = 3) {
     game.message = "此地无法招募该兵种";
     return;
   }
-  if (town.owner !== "player" && town.kind === "castle") {
-    game.message = "敌对城池拒绝招募，请先占领";
-    return;
-  }
   const result = recruitUnit(game.player, typeId, count);
   game.message = result.message;
 }

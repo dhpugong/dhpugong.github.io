@@ -1,4 +1,5 @@
 import { CONFIG, FACTIONS, SKILLS, TROOP_TYPES, WEAPONS } from "./config.js";
+import { ensurePassablePosition, clampToMap } from "./map.js";
 import { addPlayerExp, getPlayerBattleBonus } from "./player.js";
 import { getGeneralBattleBonus } from "./generals.js";
 import { addWarReport } from "./reports.js";
@@ -14,6 +15,8 @@ import { occupyTown } from "./town.js";
 import { clamp, distanceXY, rand, randInt } from "./utils.js";
 
 // 战斗模块：横版自动战斗、阵型编排、技能释放和伤亡结算。
+
+const BATTLE_MOVE_SPEED_MULTIPLIER = 2;
 
 export function startBattle(game, options) {
   const enemy = options.enemy;
@@ -85,7 +88,7 @@ function deployGeneral(battle, general, side, bonus) {
     attack: Math.round((18 + level * 4 + weapon.attack + generalBonus.attack) * (bonus ? bonus.attack : 1)),
     defense: Math.round(6 + level + weapon.defense + generalBonus.defense),
     range: weapon.range,
-    speed: (38 + level * 1.5 + generalBonus.speed) * (bonus ? bonus.speed : 1),
+    speed: (38 + level * 1.5 + generalBonus.speed) * (bonus ? bonus.speed : 1) * BATTLE_MOVE_SPEED_MULTIPLIER,
     crit: 0.08 + weapon.crit + generalBonus.crit,
     color: side === "left" ? "#ffd56a" : FACTIONS[general.faction] ? FACTIONS[general.faction].color : "#f8e9bd",
     name: general.name || "将领",
@@ -153,7 +156,7 @@ function deployFormation(battle, army, side, bonus) {
         attack: Math.round(stats.attack * (bonus ? bonus.attack : 1)),
         defense: stats.defense,
         range: stats.range,
-        speed: stats.speed * (bonus ? bonus.speed : 1) * 1.55,
+        speed: stats.speed * (bonus ? bonus.speed : 1) * 1.55 * BATTLE_MOVE_SPEED_MULTIPLIER,
         crit: stats.crit,
         color: stats.color,
         name: stats.name,
@@ -210,6 +213,22 @@ export function updateBattle(game, dt) {
       });
     }
   }
+}
+
+export function fleeBattle(game) {
+  const battle = game.battle;
+  if (!battle || battle.ended) {
+    return;
+  }
+
+  battle.ended = true;
+  battle.result = "flee";
+  battle.summary = settleBattle(game, battle);
+  battle.logs.unshift("我军鸣金撤退，脱离战场。");
+  battle.effects.push({
+    type: "banner", x: CONFIG.battleWidth / 2, y: 160,
+    color: "#c94f3f", life: 1.2, maxLife: 1.2
+  });
 }
 
 function updateBattleUnit(battle, unit, dt) {
@@ -391,23 +410,30 @@ function settleBattle(game, battle) {
   battle.settled = true;
 
   const won = battle.result === "win";
+  const fled = battle.result === "flee";
   const playerLosses = countCasualties(battle.casualties.player);
   const enemyLosses = countCasualties(battle.casualties.enemy);
+  const playerFatalities = rollFatalities(battle.casualties.player);
+  const enemyFatalities = rollFatalities(battle.casualties.enemy);
+  const playerDeaths = countCasualties(playerFatalities);
+  const enemyDeaths = countCasualties(enemyFatalities);
   const summary = {
     result: battle.result,
-    title: won ? "战斗胜利" : "战斗失败",
+    title: won ? "战斗胜利" : fled ? "撤退成功" : "战斗失败",
     rewards: { gold: 0, exp: 0 },
     playerLosses,
     enemyLosses,
+    playerDeaths,
+    enemyDeaths,
     lines: []
   };
 
-  game.player.army = applyCasualties(game.player.army, battle.casualties.player);
+  game.player.army = applyCasualties(game.player.army, playerFatalities);
   capMoraleAfterBattle(game.player.army, won);
 
   const enemyArmy = battle.enemy.army || battle.enemy.garrison;
   const rewards = won ? getVictoryRewards(enemyArmy, battle.isSiege) : { gold: 0, exp: 0 };
-  const remainingEnemy = applyCasualties(enemyArmy, battle.casualties.enemy);
+  const remainingEnemy = applyCasualties(enemyArmy, enemyFatalities);
   if (battle.enemy.army) {
     battle.enemy.army = remainingEnemy;
   } else {
@@ -421,7 +447,7 @@ function settleBattle(game, battle) {
     const levelMsgs = addPlayerExp(game.player, rewards.exp);
     summary.lines.push("获得金币 +" + rewards.gold);
     summary.lines.push("获得经验 +" + rewards.exp);
-    summary.lines.push("我军伤亡 " + playerLosses + "，敌军伤亡 " + enemyLosses);
+    summary.lines.push(formatLossLine(playerLosses, playerDeaths, enemyLosses, enemyDeaths));
     for (const msg of levelMsgs) {
       summary.lines.push(msg);
     }
@@ -434,6 +460,8 @@ function settleBattle(game, battle) {
     if (battle.enemy.alive !== undefined && !hasArmy(battle.enemy.army)) {
       battle.enemy.alive = false;
       summary.lines.push(battle.enemy.name + " 已被击溃");
+    } else if (!battle.isSiege) {
+      retreatDefeatedEnemy(game, battle.enemy);
     }
 
     if (battle.isSiege && battle.targetTown) {
@@ -444,11 +472,15 @@ function settleBattle(game, battle) {
   } else {
     game.player.x = Math.max(80, game.player.x - rand(40, 90));
     game.player.y = Math.max(80, game.player.y - rand(30, 70));
-    const lostGold = game.player.gold - Math.max(0, Math.floor(game.player.gold * 0.55));
-    game.player.gold = Math.max(0, Math.floor(game.player.gold * 0.55));
-    summary.lines.push("损失金币 -" + lostGold);
-    summary.lines.push("我军伤亡 " + playerLosses + "，敌军伤亡 " + enemyLosses);
-    summary.lines.push("部队撤退至安全地带");
+    if (fled) {
+      summary.lines.push("主动撤退，没有获得奖励");
+    } else {
+      const lostGold = game.player.gold - Math.max(0, Math.floor(game.player.gold * 0.55));
+      game.player.gold = Math.max(0, Math.floor(game.player.gold * 0.55));
+      summary.lines.push("损失金币 -" + lostGold);
+    }
+    summary.lines.push(formatLossLine(playerLosses, playerDeaths, enemyLosses, enemyDeaths));
+    summary.lines.push(fled ? "部队脱离战场" : "部队撤退至安全地带");
   }
 
   if (!hasArmy(game.player.army)) {
@@ -457,6 +489,50 @@ function settleBattle(game, battle) {
   }
 
   return summary;
+}
+
+function rollFatalities(casualtyMap) {
+  const fatalities = {};
+  for (const type in casualtyMap) {
+    if (!Object.prototype.hasOwnProperty.call(casualtyMap, type)) {
+      continue;
+    }
+    const casualties = casualtyMap[type] || 0;
+    if (casualties <= 0) {
+      continue;
+    }
+    const deathRate = rand(0.2, 0.4);
+    let dead = 0;
+    for (let i = 0; i < casualties; i += 1) {
+      if (Math.random() < deathRate) {
+        dead += 1;
+      }
+    }
+    if (dead > 0) {
+      fatalities[type] = Math.min(casualties, dead);
+    }
+  }
+  return fatalities;
+}
+
+function formatLossLine(playerLosses, playerDeaths, enemyLosses, enemyDeaths) {
+  return "我军倒下 " + playerLosses + "，实际阵亡 " + playerDeaths + "；敌军倒下 " + enemyLosses + "，实际阵亡 " + enemyDeaths;
+}
+
+function retreatDefeatedEnemy(game, enemy) {
+  if (!enemy || typeof enemy.x !== "number" || typeof enemy.y !== "number") {
+    return;
+  }
+  const dx = enemy.x - game.player.x;
+  const dy = enemy.y - game.player.y;
+  const len = Math.max(1, Math.hypot(dx, dy));
+  enemy.x += (dx / len) * rand(96, 148);
+  enemy.y += (dy / len) * rand(96, 148);
+  enemy.target = null;
+  enemy.state = "patrol";
+  enemy.siegeTimer = 0;
+  clampToMap(game.map, enemy);
+  ensurePassablePosition(game.map, enemy);
 }
 
 function rollWeaponDrop(game, battle) {
@@ -501,7 +577,7 @@ export function finishBattle(game) {
   game.state = "world";
   game.battle = null;
   game.pendingEncounter = null;
-  game.message = won ? "战斗胜利" : "战斗失败，请补充兵力";
+  game.message = won ? "战斗胜利" : battle.result === "flee" ? "部队已撤退" : "战斗失败，请补充兵力";
 }
 
 export function getBattleTitle(battle) {
