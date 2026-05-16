@@ -74,10 +74,10 @@ h3 {
   width: min(100%, 1220px);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 54px 28px 44px;
+  padding: 42px 28px 44px;
   display: grid;
   grid-template-rows: auto auto;
-  gap: 36px;
+  gap: 28px;
 }
 
 .card-action {
@@ -98,7 +98,7 @@ h3 {
 .hero {
   position: relative;
   max-width: 940px;
-  padding-top: 28px;
+  padding-top: 12px;
   animation: riseIn 560ms ease both;
 }
 
@@ -166,15 +166,15 @@ h1 span {
 
 .project-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 1.16fr) repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .project-card {
   position: relative;
   overflow: hidden;
-  min-height: 318px;
+  min-height: 330px;
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -203,7 +203,7 @@ h1 span {
 }
 
 .project-card.featured {
-  min-height: 340px;
+  min-height: 330px;
   background:
     linear-gradient(140deg, rgba(128, 255, 114, 0.2), transparent 50%),
     linear-gradient(315deg, rgba(85, 215, 255, 0.14), transparent 45%),
@@ -219,7 +219,8 @@ h1 span {
 }
 
 .project-visual {
-  height: 86px;
+  flex: 0 0 96px;
+  min-height: 96px;
   position: relative;
   overflow: hidden;
   border: 1px solid rgba(128, 255, 114, 0.18);
@@ -396,6 +397,113 @@ h1 span {
   clip-path: polygon(0 45%, 38% 38%, 48% 0, 58% 38%, 100% 45%, 62% 56%, 51% 100%, 42% 58%);
   transform: translateX(-50%);
   filter: drop-shadow(0 0 14px rgba(245, 212, 107, 0.74));
+}
+
+.rpg-visual {
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 18px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 18px),
+    linear-gradient(135deg, rgba(245, 212, 107, 0.12), transparent 42%),
+    #142012;
+}
+
+.rpg-map-tile,
+.rpg-castle,
+.rpg-hero,
+.rpg-enemy,
+.rpg-banner {
+  position: absolute;
+}
+
+.rpg-map-tile {
+  width: 52px;
+  height: 30px;
+  opacity: 0.9;
+}
+
+.rpg-map-tile.tile-a {
+  left: 12px;
+  bottom: 13px;
+  background: #6b5a35;
+}
+
+.rpg-map-tile.tile-b {
+  right: 14px;
+  top: 10px;
+  background: #1d3c58;
+}
+
+.rpg-map-tile.tile-c {
+  right: 74px;
+  bottom: 16px;
+  background: #293f27;
+}
+
+.rpg-castle {
+  left: 50%;
+  top: 18px;
+  width: 46px;
+  height: 38px;
+  transform: translateX(-50%);
+  background: #d6a84f;
+  box-shadow:
+    -13px -8px 0 -2px #b48737,
+    13px -8px 0 -2px #b48737,
+    0 0 18px rgba(245, 212, 107, 0.28);
+}
+
+.rpg-castle::before,
+.rpg-castle::after {
+  content: "";
+  position: absolute;
+  background: #17110a;
+}
+
+.rpg-castle::before {
+  left: 9px;
+  top: 10px;
+  width: 8px;
+  height: 10px;
+  box-shadow: 20px 0 0 #17110a;
+}
+
+.rpg-castle::after {
+  left: 18px;
+  bottom: 0;
+  width: 10px;
+  height: 15px;
+}
+
+.rpg-hero,
+.rpg-enemy {
+  bottom: 20px;
+  width: 14px;
+  height: 23px;
+}
+
+.rpg-hero {
+  left: 62px;
+  background: var(--gold);
+  box-shadow:
+    0 -7px 0 -2px #fff4bd,
+    15px 1px 0 -3px #f5d46b;
+}
+
+.rpg-enemy {
+  right: 58px;
+  background: #c94f3f;
+  box-shadow:
+    0 -7px 0 -2px #ffd0c8,
+    -15px 1px 0 -3px #c94f3f;
+}
+
+.rpg-banner {
+  left: 47%;
+  bottom: 17px;
+  width: 4px;
+  height: 38px;
+  background: #f8fbef;
+  box-shadow: 8px 1px 0 0 #ff5ea8;
 }
 
 .network-line {
@@ -601,6 +709,7 @@ h3 {
   font-size: 1.13rem;
   font-weight: 950;
   line-height: 1.22;
+  min-height: 1.4em;
 }
 
 .project-card p {
@@ -608,6 +717,7 @@ h3 {
   font-size: 0.86rem;
   line-height: 1.58;
   overflow-wrap: anywhere;
+  min-height: 4.1em;
 }
 
 .tag-list {
@@ -687,7 +797,7 @@ h3 {
   }
 
   .project-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   }
 }
 
@@ -710,6 +820,10 @@ h3 {
   }
 
   .project-card {
-    min-height: 260px;
+    min-height: 0;
+  }
+
+  .project-card p {
+    min-height: 0;
   }
 }

@@ -1,0 +1,99 @@
+:root {
+  color-scheme: dark;
+  --page-bg: #050403;
+  --frame: #d6a84f;
+  --frame-dark: #5f3f17;
+  --ink: #f6e7bd;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(115, 77, 28, 0.42), transparent 34%),
+    linear-gradient(180deg, #17110a 0%, #050403 70%);
+  color: var(--ink);
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  /* 扫描线效果 */
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 4px);
+}
+
+.game-shell {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+#gameCanvas {
+  width: min(100vw - 24px, 1280px);
+  height: auto;
+  max-height: calc(100vh - 24px);
+  aspect-ratio: 16 / 9;
+  display: block;
+
+  /* 双层像素边框 */
+  border: 4px solid var(--frame);
+  outline: 3px solid var(--frame-dark);
+  outline-offset: 0;
+
+  background: #080704;
+  box-shadow:
+    0 0 0 2px #1d1308,
+    0 24px 80px rgba(0, 0, 0, 0.72),
+    inset 0 0 60px rgba(0, 0, 0, 0.3);
+
+  cursor: crosshair;
+}
+
+/* 游戏容器微光 */
+.game-shell {
+  position: relative;
+}
+.game-shell::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid rgba(214, 168, 79, 0.1);
+  pointer-events: none;
+}
+
+.fallback-text {
+  position: fixed;
+  left: 12px;
+  bottom: 8px;
+  margin: 0;
+  color: rgba(246, 231, 189, 0.46);
+  font-size: 11px;
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+
+/* 响应式：窄屏自适应 */
+@media (max-aspect-ratio: 16 / 9) {
+  #gameCanvas {
+    width: auto;
+    height: calc(100vh - 24px);
+  }
+}
+
+@media (max-width: 640px) {
+  .game-shell {
+    padding: 6px;
+  }
+  #gameCanvas {
+    width: calc(100vw - 12px);
+    border-width: 2px;
+  }
+}
