@@ -59,7 +59,7 @@ export function applySaveToGame(game, data) {
   }
 
   const freshMap = createWorldMap();
-  mergeTemplateItems(freshMap.towns, data.towns);
+  mergeTemplateItems(freshMap.towns, data.towns, ["owner", "defense", "garrison", "garrisonLevel", "general"]);
   freshMap.towns.forEach(function (town) {
     if (Object.prototype.hasOwnProperty.call(TOWN_INCOME, town.id)) {
       town.taxBase = TOWN_INCOME[town.id];
@@ -72,7 +72,7 @@ export function applySaveToGame(game, data) {
     }
     applyRandomGeneralAttributes(town.general);
   });
-  mergeTemplateItems(freshMap.resources, data.resources);
+  mergeTemplateItems(freshMap.resources, data.resources, ["owner"]);
   freshMap.resources.forEach(function (resource) {
     if (Object.prototype.hasOwnProperty.call(RESOURCE_INCOME, resource.id)) {
       resource.income = RESOURCE_INCOME[resource.id];
@@ -80,6 +80,7 @@ export function applySaveToGame(game, data) {
   });
   game.map = freshMap;
   game.player = data.player || createPlayer();
+  normalizeFacing(game.player);
   if (!game.player.general) {
     game.player.general = { name: "沈铁冠", faction: "player", level: Math.max(1, game.player.level || 1), weapon: "oldSword" };
   }
@@ -101,6 +102,7 @@ export function applySaveToGame(game, data) {
     if (!npc.growthTimer) {
       npc.growthTimer = 24;
     }
+    normalizeFacing(npc);
   });
   game.log = data.log || [];
   game.reports = normalizeReports(data.reports);
@@ -112,6 +114,24 @@ export function applySaveToGame(game, data) {
   game.pendingEncounter = null;
   game.message = "读档完成";
   return true;
+}
+
+function normalizeFacing(entity) {
+  if (!entity) {
+    return;
+  }
+  if (!entity.facing) {
+    entity.facing = "down";
+  }
+  if (typeof entity.facingAngle !== "number") {
+    entity.facingAngle = entity.facing === "right"
+      ? Math.PI / 2
+      : entity.facing === "left"
+        ? -Math.PI / 2
+        : entity.facing === "up"
+          ? 0
+          : Math.PI;
+  }
 }
 
 function normalizePlayerEquipment(player) {
@@ -134,7 +154,7 @@ function getSavedWeaponName(player) {
   return weaponId && WEAPONS[weaponId] ? WEAPONS[weaponId].name : "未装备";
 }
 
-function mergeTemplateItems(targetItems, savedItems) {
+function mergeTemplateItems(targetItems, savedItems, savedFields) {
   if (!Array.isArray(savedItems)) {
     return;
   }
@@ -147,7 +167,13 @@ function mergeTemplateItems(targetItems, savedItems) {
   for (let i = 0; i < targetItems.length; i += 1) {
     const saved = savedItems.find((item) => item.id === targetItems[i].id);
     if (saved) {
-      targetItems[i] = { ...targetItems[i], ...saved };
+      const merged = { ...targetItems[i] };
+      for (const field of savedFields || []) {
+        if (Object.prototype.hasOwnProperty.call(saved, field)) {
+          merged[field] = saved[field];
+        }
+      }
+      targetItems[i] = merged;
     }
   }
 }

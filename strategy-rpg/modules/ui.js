@@ -1,4 +1,4 @@
-import { FACTIONS } from "./config.js";
+import { CONFIG, FACTIONS } from "./config.js";
 import { WEAPONS } from "./config.js";
 import { expToNextLevel, getTownDailyIncome } from "./player.js";
 import { getArmyPower, getArmySize, getMaxArmySize, getMaxTroopLevel, getRecruitOptions, getRosterLines, getTroopLevelStats, getTroopUpgradeCost, isArmyMoraleFull, upgradeArmyStack } from "./troop.js";
@@ -6,6 +6,8 @@ import { developTown, getTownDevelopmentCost, leaveTown, recruitFromTown, restAt
 import { drawBar, drawPanel, drawPixelText, formatNumber, rectContains } from "./utils.js";
 
 // UI 模块：维护按钮、HUD、城池面板和菜单面板的绘制与点击处理。
+
+const QUEST_PANEL = { x: 664, y: 64, w: 280, h: 116 };
 
 const EMPTY_WEAPON = {
   id: "none",
@@ -139,13 +141,18 @@ export function drawHud(ctx, game) {
 
   addButton(game.ui, 786, 18, 72, 32, "军队", "army");
   addButton(game.ui, 868, 18, 72, 32, "设置", "settings");
+  const autoPathButton = addButton(game.ui, 690, 18, 86, 32, "自动寻路", "autoPathDestination", !game.travelDestination);
   for (const btn of game.ui.buttons) {
     drawButton(ctx, btn, game.input);
+  }
+  if (game.travelDestination) {
+    drawTravelDestinationHint(ctx, game, autoPathButton);
   }
 
   drawNearbyTownActions(ctx, game);
   drawNearbyResourceActions(ctx, game);
   drawCaptureProgress(ctx, game);
+  drawQuestTracker(ctx, game);
   drawWarReports(ctx, game);
 
   // 键盘提示
@@ -203,16 +210,179 @@ function drawHudMetric(ctx, label, value, x, y, valueColor) {
   ctx.restore();
 }
 
+function drawTravelDestinationHint(ctx, game, button) {
+  const dx = game.travelDestination.x - game.player.x;
+  const dy = game.travelDestination.y - game.player.y;
+  const distance = Math.round(Math.hypot(dx, dy) / CONFIG.tileSize);
+  ctx.save();
+  ctx.fillStyle = "rgba(3, 8, 10, 0.72)";
+  ctx.fillRect(button.x - 8, button.y + button.h + 6, button.w + 16, 20);
+  ctx.strokeStyle = "rgba(125,243,255,0.42)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(button.x - 7.5, button.y + button.h + 6.5, button.w + 16, 20);
+  drawPixelText(ctx, "目的地 " + distance + "格", button.x + button.w / 2, button.y + button.h + 11, "#7df3ff", 10, "center");
+  ctx.restore();
+}
+
+function drawQuestTracker(ctx, game) {
+  if (game.state !== "world") {
+    return;
+  }
+  const panelX = QUEST_PANEL.x;
+  const panelY = QUEST_PANEL.y;
+  const panelW = QUEST_PANEL.w;
+  const panelH = QUEST_PANEL.h;
+  const towns = game.map.towns || [];
+  const resources = game.map.resources || [];
+  const ownedTowns = towns.filter((town) => town.owner === "player").length;
+  const ownedResources = resources.filter((resource) => resource.owner === "player").length;
+  const explored = getExploredRatio(game);
+  const title = game.player.unified ? "凯旋纪事" : "征途目标";
+  const objective = game.nearTown
+    ? "处理附近城镇：" + game.nearTown.name
+    : game.nearResource
+      ? "占领资源点：" + game.nearResource.name
+      : game.player.target
+        ? "行军至标记地点"
+        : "探索大陆并扩张势力";
+
+  drawGlassPanel(ctx, panelX, panelY, panelW, panelH, title);
+  drawQuestCompass(ctx, panelX + panelW - 30, panelY + 21, game.player.facingAngle || Math.PI);
+  drawPixelText(ctx, fitPixelText(ctx, objective, panelW - 66, 12), panelX + 18, panelY + 24, "#f8e9bd", 12);
+  drawQuestRow(ctx, "城镇", ownedTowns, towns.length, panelX + 18, panelY + 48, "#ffd56a");
+  drawQuestRow(ctx, "资源", ownedResources, resources.length, panelX + 18, panelY + 68, "#32ff9a");
+  drawQuestRow(ctx, "探索", explored, 100, panelX + 18, panelY + 88, "#7df3ff", "%");
+}
+
+function drawQuestRow(ctx, label, value, max, x, y, color, suffix) {
+  const ratio = max > 0 ? Math.min(1, value / max) : 0;
+  drawPixelText(ctx, label, x, y - 2, "#b9a77a", 10);
+  ctx.fillStyle = "rgba(0,0,0,0.42)";
+  ctx.fillRect(x + 48, y, 150, 7);
+  ctx.fillStyle = color;
+  ctx.fillRect(x + 48, y, Math.round(150 * ratio), 7);
+  ctx.strokeStyle = "rgba(248,233,189,0.26)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 48.5, y + 0.5, 150, 7);
+  drawPixelText(ctx, value + (suffix || "/" + max), x + 212, y - 4, color, 11);
+}
+
+function getExploredRatio(game) {
+  if (!game.fog || !game.fog.cells || !game.fog.cells.length) {
+    return 0;
+  }
+  if (typeof game.fog.exploredCount === "number") {
+    return Math.round((game.fog.exploredCount / game.fog.cells.length) * 100);
+  }
+  let explored = 0;
+  for (let i = 0; i < game.fog.cells.length; i += 1) {
+    if (game.fog.cells[i] > 0) {
+      explored += 1;
+    }
+  }
+  game.fog.exploredCount = explored;
+  return Math.round((explored / game.fog.cells.length) * 100);
+}
+
+function drawGlassPanel(ctx, x, y, w, h, title) {
+  ctx.save();
+  ctx.shadowColor = "rgba(84,224,255,0.28)";
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = "rgba(5, 12, 16, 0.68)";
+  ctx.fillRect(x, y, w, h);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(84,224,255,0.07)";
+  ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  for (let yy = y + 12; yy < y + h - 10; yy += 12) {
+    ctx.fillRect(x + 8, yy, w - 16, 1);
+  }
+  ctx.strokeStyle = "rgba(125,243,255,0.72)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w, h);
+  ctx.strokeStyle = "rgba(214,168,79,0.42)";
+  ctx.strokeRect(x + 5.5, y + 5.5, w - 11, h - 11);
+  ctx.fillStyle = "rgba(0,0,0,0.38)";
+  ctx.fillRect(x + 12, y - 9, Math.max(82, title.length * 16), 20);
+  drawPixelText(ctx, title, x + 22, y - 6, "#7df3ff", 14);
+  ctx.fillStyle = "#7df3ff";
+  drawUiCorner(ctx, x, y, 11, 1);
+  drawUiCorner(ctx, x + w, y, -11, 1);
+  drawUiCorner(ctx, x, y + h, 11, -1);
+  drawUiCorner(ctx, x + w, y + h, -11, -1);
+  ctx.restore();
+}
+
+function drawUiCorner(ctx, x, y, dx, dy) {
+  ctx.fillRect(Math.round(x), Math.round(y), dx, 2 * dy);
+  ctx.fillRect(Math.round(x), Math.round(y), 2 * Math.sign(dx), 10 * dy);
+}
+
+function drawQuestCompass(ctx, x, y, angle) {
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.strokeStyle = "rgba(125,243,255,0.38)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-10.5, -10.5, 21, 21);
+  ctx.fillStyle = "rgba(0,0,0,0.42)";
+  ctx.fillRect(-8, -8, 16, 16);
+  ctx.rotate(angle || 0);
+  ctx.fillStyle = "#32ff9a";
+  ctx.beginPath();
+  ctx.moveTo(0, -8);
+  ctx.lineTo(6, 6);
+  ctx.lineTo(0, 3);
+  ctx.lineTo(-6, 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawWarReports(ctx, game) {
   const reports = (game.reports || []).slice(0, 6);
+  if (!reports.length) {
+    return;
+  }
+  const x = QUEST_PANEL.x;
+  const y = 196;
+  const w = QUEST_PANEL.w;
+  const h = 30 + reports.length * 16;
+  ctx.save();
+  ctx.fillStyle = "rgba(6, 10, 13, 0.46)";
+  ctx.fillRect(x, y - 10, w, h);
+  ctx.strokeStyle = "rgba(214,168,79,0.36)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y - 10.5, w, h);
+  ctx.fillStyle = "rgba(214,168,79,0.1)";
+  ctx.fillRect(x + 5, y - 5, w - 10, 1);
+  drawPixelText(ctx, "战报", x + 12, y - 6, "#ffd56a", 11);
   reports.forEach(function (report, index) {
     const color = report.kind === "good"
       ? "#74d17a"
       : report.kind === "bad"
         ? "#ff7568"
         : "#d7c89e";
-    drawPixelText(ctx, report.text, 12, 424 + index * 16, color, 10);
+    ctx.fillStyle = color;
+    ctx.fillRect(x + 12, y + 16 + index * 16, 4, 4);
+    drawPixelText(ctx, fitPixelText(ctx, report.text, w - 38, 10), x + 22, y + 11 + index * 16, color, 10);
   });
+  ctx.restore();
+}
+
+function fitPixelText(ctx, text, maxWidth, size) {
+  const value = String(text || "");
+  ctx.save();
+  ctx.font = `${size >= 12 ? 600 : 500} ${size}px "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif`;
+  if (ctx.measureText(value).width <= maxWidth) {
+    ctx.restore();
+    return value;
+  }
+  let fitted = value;
+  while (fitted.length > 1 && ctx.measureText(fitted + "...").width > maxWidth) {
+    fitted = fitted.slice(0, -1);
+  }
+  ctx.restore();
+  return fitted + "...";
 }
 
 function drawNearbyResourceActions(ctx, game) {

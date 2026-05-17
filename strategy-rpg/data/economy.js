@@ -8,7 +8,15 @@ export const TOWN_INCOME = {
   northwatch: 100,
   goldenfield: 82,
   stormgate: 140,
-  mistport: 90
+  mistport: 90,
+  dawnwatch: 108,
+  emberfall: 126,
+  moonwell: 94,
+  ironpass: 118,
+  jadecross: 88,
+  frostford: 102,
+  starhaven: 84,
+  ravenrock: 112
 };
 
 export const RESOURCE_INCOME = {
@@ -18,5 +26,11 @@ export const RESOURCE_INCOME = {
   riverfarm: 30,
   westmine: 48,
   eastfarm: 34,
-  mistmine: 52
+  mistmine: 52,
+  dawnfarm: 32,
+  ambermine: 56,
+  moonorchard: 38,
+  frostmine: 50,
+  jadefarm: 36,
+  ravenquarry: 54
 };

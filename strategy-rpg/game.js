@@ -2,7 +2,7 @@ import { createInitialNpcs, growFactionTowns, spawnWildIfNeeded, updateNpcs } fr
 import { finishBattle, fleeBattle, startBattle, updateBattle } from "./modules/battle.js";
 import { createCamera, screenToWorld, updateCamera } from "./modules/camera.js";
 import { CONFIG } from "./modules/config.js";
-import { consumeClick, consumeKey, consumeTextInput, createInput, getMovementVector } from "./modules/input.js";
+import { consumeClick, consumeDoubleClick, consumeKey, consumeTextInput, createInput, getMovementVector } from "./modules/input.js";
 import { clampToMap, ensurePassablePosition, findNearestResource, findNearestTown, findSafeStep, getTile, isPassable } from "./modules/map.js";
 import { createPlayer, processNewDay, refreshOwnedResources, refreshOwnedTowns } from "./modules/player.js";
 import { addWarReport } from "./modules/reports.js";
@@ -12,6 +12,11 @@ import { getArmyPower } from "./modules/troop.js";
 import { enterTown } from "./modules/town.js";
 import { distanceXY, moveToward } from "./modules/utils.js";
 import { getClickedButton, handleUiAction } from "./modules/ui.js";
+import { focusCameraOn, releaseCamera } from "./map/camera.js";
+import { createFogOfWar, resetFogOfWar, updateFogOfWar } from "./map/fog.js";
+import { createMiniMapState, handleMiniMapClick, updateMiniMapHover } from "./map/minimap.js";
+import { assignUnitPath, buildRoadPreferredPath, clearUnitPath } from "./map/pathfinding.js";
+import { closeWorldMapToPlayer, createWorldMapState, handleWorldMapClick, handleWorldMapDoubleClick, updateWorldMap } from "./map/worldmap.js";
 
 // 铁冠诸侯 — 游戏入口。负责拼装模块、状态机和主循环。
 // 所有业务逻辑归到各模块中，只在本文件做调度。
@@ -34,6 +39,11 @@ var game = {
   camera: camera,
   input: input,
   ui: { buttons: [] },
+  fog: createFogOfWar(fresh.map),
+  mapUi: {
+    miniMap: createMiniMapState(),
+    worldMap: createWorldMapState()
+  },
   notice: null,
   npcs: [],
   activeTown: null,
@@ -43,6 +53,7 @@ var game = {
   battle: null,
   pendingEncounter: null,
   encounter: null,
+  travelDestination: null,
   privilege: { open: false, input: "", busy: false },
   message: "点击地面移动，WASD 行军。靠近城镇按 E 进入，按 R 攻城。",
   log: ["探索大陆、招募扩军、攻城收税、统一全境", "提示：ESC 打开军务菜单 | F5 保存 | F9 读档"],
@@ -58,6 +69,8 @@ var game = {
 };
 
 game.npcs = createInitialNpcs(game.map);
+updateFogOfWar(game.fog, game.map, game.player, true);
+focusCameraOn(game.camera, game.player.x, game.player.y, game.map, true);
 
 refreshOwnedTowns(game.player, game.map.towns);
 requestAnimationFrame(loop);
@@ -86,6 +99,17 @@ function updateGame(dt) {
   handleGlobalShortcuts();
 
   var click = consumeClick(input);
+  var doubleClick = consumeDoubleClick(input);
+  if (doubleClick && handleWorldMapDoubleClick(game, doubleClick)) return;
+  if (game.mapUi && game.mapUi.worldMap.open) {
+    updateWorldMap(game, dt);
+    if (click && handleWorldMapClick(game, click)) return;
+    return;
+  }
+  input.mouse.dragDx = 0;
+  input.mouse.dragDy = 0;
+  input.mouse.wheel = 0;
+
   if (click && handleUiClick(click)) return;
 
   if (game.state === "start") {
@@ -98,6 +122,8 @@ function updateGame(dt) {
   }
 
   if (game.state === "world") {
+    updateMiniMapHover(game);
+    if (click && handleMiniMapClick(game, click)) return;
     updateWorld(dt, click);
   } else if (game.state === "town" || game.state === "menu" || game.state === "army" || game.state === "settings" || game.state === "encounter") {
     updateCamera(game.camera, game.player, game.map);
@@ -116,6 +142,9 @@ function handleGlobalShortcuts() {
   if (consumeKey(input, "escape")) {
     if (game.privilege && game.privilege.open) {
       game.privilege.open = false;
+    } else if (game.mapUi && game.mapUi.worldMap && game.mapUi.worldMap.open) {
+      closeWorldMapToPlayer(game);
+      game.message = "关闭世界地图";
     } else if (game.state === "menu") {
       if (game.ui) {
         game.ui.attributeSession = null;
@@ -166,12 +195,12 @@ function handleUiClick(click) {
   }
   if (button.action === "finishBattle") {
     finishBattle(game);
-    game.player.target = null;
+    clearUnitPath(game.player);
     return true;
   }
   if (button.action === "fleeBattle") {
     fleeBattle(game);
-    game.player.target = null;
+    clearUnitPath(game.player);
     return true;
   }
   if (button.action === "acceptEncounter") {
@@ -193,7 +222,7 @@ function handleUiClick(click) {
       if (game.nearTown.owner === "player") {
         setNotice("无需攻城", [game.nearTown.name + " 已是我方城池"], 1.8, "gold");
       } else {
-        game.player.target = null;
+        clearUnitPath(game.player);
         addWarReport(game, "我军正在攻击 " + game.nearTown.name, "good");
         startBattle(game, { type: "siege", enemy: game.nearTown, town: game.nearTown });
       }
@@ -202,6 +231,10 @@ function handleUiClick(click) {
   }
   if (button.action === "captureNearbyResource") {
     beginResourceCapture();
+    return true;
+  }
+  if (button.action === "autoPathDestination") {
+    startAutoPathToDestination();
     return true;
   }
   if (button.action === "save") {
@@ -247,32 +280,36 @@ function updateWorld(dt, click) {
 
 function updatePlayerMovement(dt, click) {
   if (ensurePassablePosition(game.map, game.player)) {
+    clearUnitPath(game.player);
     game.message = "部队已回到可通行地形";
   }
+  ensureFacingState(game.player);
 
   var movement = getMovementVector(input);
   var movingByKeyboard = movement.dx !== 0 || movement.dy !== 0;
 
   if (movingByKeyboard) {
-    game.player.target = null;
+    clearUnitPath(game.player);
+    releaseCamera(game.camera);
+    updateFacing(game.player, movement.dx, movement.dy);
     movePlayerBy(movement.dx, movement.dy, dt);
   } else if (game.player.target) {
     var terrain = getTile(game.map, game.player.x, game.player.y);
     var speed = CONFIG.playerSpeed * WORLD_MOVE_SPEED_MULTIPLIER * terrain.speed;
     var oldX = game.player.x;
     var oldY = game.player.y;
+    updateFacing(game.player, game.player.target.x - game.player.x, game.player.target.y - game.player.y);
     var arrived = moveToward(game.player, game.player.target.x, game.player.target.y, speed, dt);
     var safe = findSafeStep(game.map, oldX, oldY, game.player.x, game.player.y);
     game.player.x = safe.x;
     game.player.y = safe.y;
     if (safe.x === oldX && safe.y === oldY && !isPassable(game.map, game.player.target.x, game.player.target.y)) {
-      game.player.target = null;
+      clearUnitPath(game.player);
       game.message = "山体无法通行";
       return;
     }
     if (arrived || distanceXY(game.player.x, game.player.y, game.player.target.x, game.player.target.y) < CONFIG.clickArriveDistance) {
-      game.player.target = null;
-      game.message = "到达目的地";
+      advancePlayerPath();
     }
   }
 
@@ -280,7 +317,10 @@ function updatePlayerMovement(dt, click) {
   if (click) {
     var world = screenToWorld(game.camera, click.x, click.y);
     if (isPassable(game.map, world.x, world.y)) {
+      clearUnitPath(game.player);
       game.player.target = world;
+      updateFacing(game.player, world.x - game.player.x, world.y - game.player.y);
+      releaseCamera(game.camera);
       game.message = "部队正在行军……";
     } else {
       game.message = "山体无法通行";
@@ -288,6 +328,37 @@ function updatePlayerMovement(dt, click) {
   }
 
   clampToMap(game.map, game.player);
+  updateFogOfWar(game.fog, game.map, game.player);
+}
+
+function ensureFacingState(entity) {
+  if (!entity.facing) {
+    entity.facing = "down";
+  }
+  if (typeof entity.facingAngle !== "number") {
+    entity.facingAngle = facingToAngle(entity.facing);
+  }
+}
+
+function updateFacing(entity, dx, dy) {
+  if (Math.hypot(dx, dy) < 0.01) {
+    ensureFacingState(entity);
+    return;
+  }
+  entity.facingAngle = Math.atan2(dy, dx) + Math.PI / 2;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    entity.facing = dx > 0 ? "right" : "left";
+  } else {
+    entity.facing = dy > 0 ? "down" : "up";
+  }
+  entity.lastMoveAt = performance.now();
+}
+
+function facingToAngle(facing) {
+  if (facing === "right") return Math.PI / 2;
+  if (facing === "down") return Math.PI;
+  if (facing === "left") return -Math.PI / 2;
+  return 0;
 }
 
 function movePlayerBy(dx, dy, dt) {
@@ -303,6 +374,41 @@ function movePlayerBy(dx, dy, dt) {
   game.player.y = safe.y;
 }
 
+function advancePlayerPath() {
+  var player = game.player;
+  var followingPath = Array.isArray(player.path) && player.path.length > 0;
+  if (followingPath && player.pathIndex < player.path.length - 1) {
+    player.pathIndex += 1;
+    player.target = player.path[player.pathIndex];
+    game.message = player.pathUsesRoads ? "沿主干道行军中" : "远征行军中";
+    return;
+  }
+  var completedAutoPath = followingPath && player.pathMode === "road";
+  clearUnitPath(player);
+  if (completedAutoPath) {
+    game.travelDestination = null;
+  }
+  game.message = "到达目的地";
+}
+
+function startAutoPathToDestination() {
+  if (!game.travelDestination) {
+    game.message = "请先在世界地图设立目的地";
+    return false;
+  }
+  var route = buildRoadPreferredPath(game.map, game.player, game.travelDestination);
+  if (!assignUnitPath(game.player, route, "road")) {
+    game.message = "无法到达该目的地";
+    return false;
+  }
+  if (route.adjusted && route.adjustedTarget) {
+    game.travelDestination = route.adjustedTarget;
+  }
+  releaseCamera(game.camera);
+  game.message = route.usedRoads ? "自动寻路：优先走主干道" : "自动寻路：前往目的地";
+  return true;
+}
+
 // ==================== 世界交互 ====================
 
 function handleWorldInteractions() {
@@ -314,6 +420,7 @@ function handleWorldInteractions() {
     game.message = "靠近 " + nearTown.name + "（" + factionName + "）— 按 E 进入，按 R 攻城";
 
     if (consumeKey(input, "e")) {
+      clearUnitPath(game.player);
       enterTown(game, nearTown);
       return;
     }
@@ -322,7 +429,7 @@ function handleWorldInteractions() {
         game.message = nearTown.name + " 已是我方城池，无需攻城";
         setNotice("无需攻城", [nearTown.name + " 已是我方城池"], 1.8, "gold");
       } else {
-        game.player.target = null;
+        clearUnitPath(game.player);
         addWarReport(game, "我军正在攻击 " + nearTown.name, "good");
         startBattle(game, { type: "siege", enemy: nearTown, town: nearTown });
       }
@@ -365,7 +472,7 @@ function beginResourceCapture() {
     setNotice("已占领", [game.nearResource.name + " 已属于你"], 1.6, "gold");
     return;
   }
-  game.player.target = null;
+  clearUnitPath(game.player);
   game.capturingResource = {
     id: game.nearResource.id,
     timer: 0,
@@ -397,7 +504,7 @@ function updateResourceCapture(dt) {
 }
 
 function openEncounter(enemy) {
-  game.player.target = null;
+  clearUnitPath(game.player);
   game.capturingResource = null;
   game.encounter = { enemy: enemy };
   game.state = "encounter";
@@ -411,7 +518,7 @@ function acceptEncounter() {
   }
   var enemy = game.encounter.enemy;
   game.encounter = null;
-  game.player.target = null;
+  clearUnitPath(game.player);
   startBattle(game, { type: "encounter", enemy: enemy });
 }
 
@@ -428,7 +535,7 @@ function fleeEncounter() {
     clampToMap(game.map, game.player);
     clampToMap(game.map, enemy);
   }
-  game.player.target = null;
+  clearUnitPath(game.player);
   game.encounter = null;
   game.state = "world";
   setNotice("已逃离", ["暂避锋芒，重新整队"], 1.6, "gold");
@@ -466,13 +573,20 @@ function loadIntoCurrentGame(fromStart) {
     return;
   }
   applySaveToGame(game, data);
-  game.player.target = null;
+  resetFogOfWar(game);
+  game.mapUi = {
+    miniMap: createMiniMapState(),
+    worldMap: createWorldMapState()
+  };
+  clearUnitPath(game.player);
   game.nearTown = null;
   game.nearResource = null;
   game.capturingResource = null;
   game.encounter = null;
+  game.travelDestination = null;
   game.message = "读档完成，欢迎回来。";
   game.state = "world";
+  focusCameraOn(game.camera, game.player.x, game.player.y, game.map, true);
   setNotice("读档完成", ["已读取本地存档"], 1.8, "gold");
 }
 
@@ -481,9 +595,17 @@ function startNewGame() {
   game.state = "world";
   game.map = freshGame.map;
   game.player = freshGame.player || createPlayer();
+  clearUnitPath(game.player);
+  game.fog = createFogOfWar(game.map);
+  updateFogOfWar(game.fog, game.map, game.player, true);
+  game.mapUi = {
+    miniMap: createMiniMapState(),
+    worldMap: createWorldMapState()
+  };
   game.camera.x = 0;
   game.camera.y = 0;
   game.camera.shake = 0;
+  focusCameraOn(game.camera, game.player.x, game.player.y, game.map, true);
   game.npcs = createInitialNpcs(game.map);
   game.activeTown = null;
   game.nearTown = null;
@@ -492,6 +614,7 @@ function startNewGame() {
   game.battle = null;
   game.pendingEncounter = null;
   game.encounter = null;
+  game.travelDestination = null;
   game.notice = null;
   game.message = "点击地面移动，WASD 行军。靠近城镇按 E 进入，按 R 攻城。";
   game.log = ["探索大陆、招募扩军、攻城收税、统一全境", "提示：ESC 打开军务菜单 | F5 保存 | F9 读档"];

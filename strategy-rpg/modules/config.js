@@ -6,8 +6,8 @@ export const CONFIG = {
   canvasWidth: 960,
   canvasHeight: 540,
   tileSize: 32,
-  mapCols: 112,
-  mapRows: 66,
+  mapCols: 192,
+  mapRows: 192,
   playerSpeed: 118,
   cameraLerp: 0.12,
   clickArriveDistance: 6,
@@ -43,11 +43,11 @@ export const CONFIG = {
 
 export const TERRAIN = {
   grass: { id: 0, name: "草原", color: "#405d2a", passable: true, speed: 1 },
-  forest: { id: 1, name: "森林", color: "#284727", passable: true, speed: 0.72 },
-  hill: { id: 2, name: "丘陵", color: "#6a5b38", passable: true, speed: 0.82 },
-  mountain: { id: 3, name: "山脉", color: "#34312d", passable: false, speed: 0 },
-  water: { id: 4, name: "水域", color: "#1e405d", passable: false, speed: 0 },
-  road: { id: 5, name: "道路", color: "#8a6b3d", passable: true, speed: 1.2 }
+  water: { id: 1, name: "水域", color: "#1e405d", passable: false, speed: 0 },
+  mountain: { id: 2, name: "山脉", color: "#334352", passable: false, speed: 0 },
+  road: { id: 3, name: "道路", color: "#8a6b3d", passable: true, speed: 1.2 },
+  forest: { id: 4, name: "森林", color: "#284727", passable: true, speed: 0.72 },
+  hill: { id: 5, name: "丘陵", color: "#6a5b38", passable: true, speed: 0.82 }
 };
 
 export const FACTIONS = {
@@ -190,7 +190,9 @@ export const PLAYER_TEMPLATE = {
   skillPoints: 0,
   gold: 240,
   x: 420,
-  y: 360,
+  y: 420,
+  facing: "down",
+  facingAngle: Math.PI,
   attributes: {
     strength: 6,
     agility: 5,
@@ -278,8 +280,8 @@ export const TOWN_TEMPLATES = [
     id: "blueharbor",
     name: "蓝港城",
     kind: "castle",
-    x: 720,
-    y: 1310,
+    x: 1120,
+    y: 2050,
     owner: "blue",
     defense: 112,
     taxBase: TOWN_INCOME.blueharbor,
@@ -294,8 +296,8 @@ export const TOWN_TEMPLATES = [
     id: "crowmine",
     name: "鸦矿镇",
     kind: "village",
-    x: 2080,
-    y: 250,
+    x: 2920,
+    y: 860,
     owner: "red",
     defense: 54,
     taxBase: TOWN_INCOME.crowmine,
@@ -310,8 +312,8 @@ export const TOWN_TEMPLATES = [
     id: "northwatch",
     name: "北望寨",
     kind: "castle",
-    x: 2700,
-    y: 520,
+    x: 4520,
+    y: 980,
     owner: "blue",
     defense: 96,
     taxBase: TOWN_INCOME.northwatch,
@@ -326,8 +328,8 @@ export const TOWN_TEMPLATES = [
     id: "goldenfield",
     name: "金穗镇",
     kind: "village",
-    x: 2440,
-    y: 1460,
+    x: 3800,
+    y: 2850,
     owner: "neutral",
     defense: 44,
     taxBase: TOWN_INCOME.goldenfield,
@@ -342,8 +344,8 @@ export const TOWN_TEMPLATES = [
     id: "stormgate",
     name: "风暴关",
     kind: "castle",
-    x: 3120,
-    y: 1080,
+    x: 5050,
+    y: 3900,
     owner: "red",
     defense: 132,
     taxBase: TOWN_INCOME.stormgate,
@@ -358,8 +360,8 @@ export const TOWN_TEMPLATES = [
     id: "mistport",
     name: "雾港",
     kind: "tavern",
-    x: 3300,
-    y: 1700,
+    x: 5460,
+    y: 5300,
     owner: "blue",
     defense: 52,
     taxBase: TOWN_INCOME.mistport,
@@ -369,6 +371,134 @@ export const TOWN_TEMPLATES = [
       { type: "mage", count: 4, level: 2, xp: 0, morale: 70 }
     ],
     general: { name: "苏雾港", faction: "blue", level: 2, weapon: "runedStaff" }
+  },
+  {
+    id: "dawnwatch",
+    name: "曦望堡",
+    kind: "castle",
+    x: 4380,
+    y: 1640,
+    owner: "blue",
+    defense: 104,
+    taxBase: TOWN_INCOME.dawnwatch,
+    recruits: ["infantry", "archer", "mage"],
+    garrison: [
+      { type: "infantry", count: 18, level: 2, xp: 0, morale: 74 },
+      { type: "mage", count: 5, level: 2, xp: 0, morale: 70 }
+    ],
+    general: { name: "卫曦望", faction: "blue", level: 2, weapon: "runedStaff" }
+  },
+  {
+    id: "emberfall",
+    name: "烬落城",
+    kind: "castle",
+    x: 2670,
+    y: 3180,
+    owner: "red",
+    defense: 124,
+    taxBase: TOWN_INCOME.emberfall,
+    recruits: ["infantry", "pikeman", "cavalry"],
+    garrison: [
+      { type: "pikeman", count: 20, level: 2, xp: 0, morale: 76 },
+      { type: "cavalry", count: 8, level: 2, xp: 0, morale: 78 }
+    ],
+    general: { name: "燕烬落", faction: "red", level: 3, weapon: "wolfAxe" }
+  },
+  {
+    id: "moonwell",
+    name: "月井镇",
+    kind: "village",
+    x: 1900,
+    y: 4480,
+    owner: "neutral",
+    defense: 58,
+    taxBase: TOWN_INCOME.moonwell,
+    recruits: ["archer", "mage"],
+    garrison: [
+      { type: "archer", count: 14, level: 2, xp: 0, morale: 72 },
+      { type: "infantry", count: 8, level: 1, xp: 0, morale: 68 }
+    ],
+    general: { name: "闻月井", faction: "neutral", level: 2, weapon: "eagleBow" }
+  },
+  {
+    id: "ironpass",
+    name: "铁隘关",
+    kind: "castle",
+    x: 4870,
+    y: 2360,
+    owner: "red",
+    defense: 136,
+    taxBase: TOWN_INCOME.ironpass,
+    recruits: ["pikeman", "cavalry", "infantry"],
+    garrison: [
+      { type: "pikeman", count: 24, level: 2, xp: 0, morale: 78 },
+      { type: "infantry", count: 20, level: 2, xp: 0, morale: 76 }
+    ],
+    general: { name: "武铁隘", faction: "red", level: 3, weapon: "goldHalberd" }
+  },
+  {
+    id: "jadecross",
+    name: "青岚驿",
+    kind: "tavern",
+    x: 2540,
+    y: 4960,
+    owner: "neutral",
+    defense: 44,
+    taxBase: TOWN_INCOME.jadecross,
+    recruits: ["cavalry", "archer", "mage"],
+    garrison: [
+      { type: "archer", count: 10, level: 1, xp: 0, morale: 68 },
+      { type: "cavalry", count: 4, level: 1, xp: 0, morale: 70 }
+    ],
+    general: { name: "裴青岚", faction: "neutral", level: 2, weapon: "eagleBow" }
+  },
+  {
+    id: "frostford",
+    name: "霜渡营",
+    kind: "castle",
+    x: 1240,
+    y: 3160,
+    owner: "blue",
+    defense: 108,
+    taxBase: TOWN_INCOME.frostford,
+    recruits: ["infantry", "archer", "pikeman"],
+    garrison: [
+      { type: "infantry", count: 18, level: 2, xp: 0, morale: 74 },
+      { type: "archer", count: 12, level: 2, xp: 0, morale: 72 }
+    ],
+    general: { name: "岑霜渡", faction: "blue", level: 2, weapon: "eagleBow" }
+  },
+  {
+    id: "starhaven",
+    name: "星坞",
+    kind: "village",
+    x: 5240,
+    y: 1420,
+    owner: "neutral",
+    defense: 48,
+    taxBase: TOWN_INCOME.starhaven,
+    recruits: ["infantry", "mage"],
+    garrison: [
+      { type: "infantry", count: 12, level: 1, xp: 0, morale: 68 },
+      { type: "mage", count: 3, level: 1, xp: 0, morale: 66 }
+    ],
+    general: { name: "洛星坞", faction: "neutral", level: 1, weapon: "runedStaff" }
+  },
+  {
+    id: "ravenrock",
+    name: "玄岩寨",
+    kind: "castle",
+    x: 3440,
+    y: 5480,
+    owner: "red",
+    defense: 114,
+    taxBase: TOWN_INCOME.ravenrock,
+    recruits: ["pikeman", "infantry", "cavalry"],
+    garrison: [
+      { type: "pikeman", count: 20, level: 2, xp: 0, morale: 74 },
+      { type: "cavalry", count: 7, level: 2, xp: 0, morale: 76 }
+    ],
+    general: { name: "狄玄岩", faction: "red", level: 2, weapon: "wolfAxe" }
   }
 ];
 
@@ -377,7 +507,13 @@ export const RESOURCE_TEMPLATES = [
   { id: "southfarm", name: "南谷农场", kind: "farm", x: 1040, y: 670, owner: "neutral", income: RESOURCE_INCOME.southfarm, captureTime: 2.6 },
   { id: "silverpit", name: "银砂矿场", kind: "mine", x: 1460, y: 1010, owner: "neutral", income: RESOURCE_INCOME.silverpit, captureTime: 4 },
   { id: "riverfarm", name: "河湾农庄", kind: "farm", x: 2080, y: 760, owner: "neutral", income: RESOURCE_INCOME.riverfarm, captureTime: 2.8 },
-  { id: "westmine", name: "西脊矿坑", kind: "mine", x: 2780, y: 860, owner: "neutral", income: RESOURCE_INCOME.westmine, captureTime: 4.2 },
-  { id: "eastfarm", name: "东原农庄", kind: "farm", x: 3040, y: 1450, owner: "neutral", income: RESOURCE_INCOME.eastfarm, captureTime: 3 },
-  { id: "mistmine", name: "雾港银井", kind: "mine", x: 3400, y: 1840, owner: "neutral", income: RESOURCE_INCOME.mistmine, captureTime: 4.4 }
+  { id: "westmine", name: "西脊矿坑", kind: "mine", x: 3300, y: 1320, owner: "neutral", income: RESOURCE_INCOME.westmine, captureTime: 4.2 },
+  { id: "eastfarm", name: "东原农庄", kind: "farm", x: 4140, y: 2420, owner: "neutral", income: RESOURCE_INCOME.eastfarm, captureTime: 3 },
+  { id: "mistmine", name: "雾港银井", kind: "mine", x: 5520, y: 4980, owner: "neutral", income: RESOURCE_INCOME.mistmine, captureTime: 4.4 },
+  { id: "dawnfarm", name: "曦光麦田", kind: "farm", x: 4240, y: 1840, owner: "neutral", income: RESOURCE_INCOME.dawnfarm, captureTime: 3 },
+  { id: "ambermine", name: "琥珀矿脉", kind: "mine", x: 2860, y: 3460, owner: "neutral", income: RESOURCE_INCOME.ambermine, captureTime: 4.6 },
+  { id: "moonorchard", name: "月井果园", kind: "farm", x: 1760, y: 4240, owner: "neutral", income: RESOURCE_INCOME.moonorchard, captureTime: 3.1 },
+  { id: "frostmine", name: "霜铁矿井", kind: "mine", x: 940, y: 3460, owner: "neutral", income: RESOURCE_INCOME.frostmine, captureTime: 4.3 },
+  { id: "jadefarm", name: "青岚牧场", kind: "farm", x: 2360, y: 5180, owner: "neutral", income: RESOURCE_INCOME.jadefarm, captureTime: 3.2 },
+  { id: "ravenquarry", name: "玄岩采石场", kind: "mine", x: 3600, y: 5260, owner: "neutral", income: RESOURCE_INCOME.ravenquarry, captureTime: 4.5 }
 ];

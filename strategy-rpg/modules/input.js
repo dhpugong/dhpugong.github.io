@@ -6,7 +6,19 @@ export function createInput(canvas) {
   const input = {
     keys: new Set(),
     textEvents: [],
-    mouse: { x: 0, y: 0, down: false, clicked: false, worldClick: null },
+    mouse: {
+      x: 0,
+      y: 0,
+      prevX: 0,
+      prevY: 0,
+      down: false,
+      clicked: false,
+      doubleClicked: false,
+      dragDx: 0,
+      dragDy: 0,
+      wheel: 0,
+      worldClick: null
+    },
     lastAction: null
   };
 
@@ -37,6 +49,10 @@ export function createInput(canvas) {
 
   canvas.addEventListener("mousemove", (event) => {
     const pos = getCanvasPoint(canvas, event);
+    input.mouse.dragDx += pos.x - input.mouse.x;
+    input.mouse.dragDy += pos.y - input.mouse.y;
+    input.mouse.prevX = input.mouse.x;
+    input.mouse.prevY = input.mouse.y;
     input.mouse.x = pos.x;
     input.mouse.y = pos.y;
   });
@@ -45,6 +61,10 @@ export function createInput(canvas) {
     const pos = getCanvasPoint(canvas, event);
     input.mouse.x = pos.x;
     input.mouse.y = pos.y;
+    input.mouse.prevX = pos.x;
+    input.mouse.prevY = pos.y;
+    input.mouse.dragDx = 0;
+    input.mouse.dragDy = 0;
     input.mouse.down = true;
   });
 
@@ -58,6 +78,18 @@ export function createInput(canvas) {
     input.mouse.y = pos.y;
     input.mouse.clicked = true;
   });
+
+  canvas.addEventListener("dblclick", (event) => {
+    const pos = getCanvasPoint(canvas, event);
+    input.mouse.x = pos.x;
+    input.mouse.y = pos.y;
+    input.mouse.doubleClicked = true;
+  });
+
+  canvas.addEventListener("wheel", (event) => {
+    input.mouse.wheel += event.deltaY;
+    event.preventDefault();
+  }, { passive: false });
 
   return input;
 }
@@ -83,6 +115,27 @@ export function consumeClick(input) {
   }
   input.mouse.clicked = false;
   return { x: input.mouse.x, y: input.mouse.y };
+}
+
+export function consumeDoubleClick(input) {
+  if (!input.mouse.doubleClicked) {
+    return null;
+  }
+  input.mouse.doubleClicked = false;
+  return { x: input.mouse.x, y: input.mouse.y };
+}
+
+export function consumeMouseDelta(input) {
+  const delta = { dx: input.mouse.dragDx, dy: input.mouse.dragDy };
+  input.mouse.dragDx = 0;
+  input.mouse.dragDy = 0;
+  return delta;
+}
+
+export function consumeWheel(input) {
+  const value = input.mouse.wheel;
+  input.mouse.wheel = 0;
+  return value;
 }
 
 export function consumeTextInput(input) {

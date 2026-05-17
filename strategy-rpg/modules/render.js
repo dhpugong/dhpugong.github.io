@@ -4,6 +4,9 @@ import { getTerrainById } from "./map.js";
 import { hasSave } from "./save.js";
 import { addButton, drawArmyUi, drawButton, drawHud, drawMenuUi, drawSettingsUi, drawTownUi } from "./ui.js";
 import { drawBar, drawPanel, drawPixelText, clamp } from "./utils.js";
+import { drawMiniMap as drawMiniMapOverlay } from "../map/minimap.js";
+import { renderWorldScene } from "../map/mapRenderer.js";
+import { drawWorldMap } from "../map/worldmap.js";
 
 // 渲染模块：使用像素精灵绘制地图、单位和战斗场景，保持 Canvas 结构清晰。
 // 所有精灵均为程序化像素绘制，无外部资源依赖。
@@ -58,6 +61,7 @@ export function renderGame(renderer, game) {
   if (game.player.unified) {
     drawVictoryBanner(ctx);
   }
+  drawWorldMap(ctx, game);
   drawCenterNotice(ctx, game);
 }
 
@@ -120,9 +124,8 @@ function drawCoverImage(ctx, image, x, y, w, h) {
 // ==================== 世界地图渲染 ====================
 
 function renderWorld(ctx, game) {
-  drawMapLayer(ctx, game);
-  drawUnitLayer(ctx, game);
-  drawMiniMap(ctx, game);
+  renderWorldScene(ctx, game);
+  drawMiniMapOverlay(ctx, game);
 }
 
 function drawMapLayer(ctx, game) {

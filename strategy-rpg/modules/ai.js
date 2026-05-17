@@ -11,18 +11,22 @@ export function createInitialNpcs(map) {
   const npcs = [];
   const seeds = [
     { name: "赤狼巡骑", faction: "red", level: 1, x: 1560, y: 980, homeTownId: "redspire", general: { name: "赫连牙", faction: "red", level: 1, weapon: "wolfAxe" }, army: [{ type: "cavalry", count: 5, level: 1, xp: 0, morale: 72 }, { type: "infantry", count: 10, level: 1, xp: 0, morale: 70 }] },
-    { name: "苍鹰弓队", faction: "blue", level: 1, x: 880, y: 1160, homeTownId: "blueharbor", general: { name: "岑青羽", faction: "blue", level: 1, weapon: "eagleBow" }, army: [{ type: "archer", count: 14, level: 1, xp: 0, morale: 72 }, { type: "infantry", count: 8, level: 1, xp: 0, morale: 68 }] },
+    { name: "苍鹰弓队", faction: "blue", level: 1, x: 1180, y: 1980, homeTownId: "blueharbor", general: { name: "岑青羽", faction: "blue", level: 1, weapon: "eagleBow" }, army: [{ type: "archer", count: 14, level: 1, xp: 0, morale: 72 }, { type: "infantry", count: 8, level: 1, xp: 0, morale: 68 }] },
     { name: "佣兵队长", faction: "neutral", level: 1, x: 1340, y: 520, homeTownId: "graykeep", general: { name: "罗恩", faction: "neutral", level: 1, weapon: "ironSaber" }, army: [{ type: "pikeman", count: 10, level: 1, xp: 0, morale: 68 }, { type: "archer", count: 5, level: 1, xp: 0, morale: 66 }] },
-    { name: "黑旗法师", faction: "red", level: 2, x: 2030, y: 640, homeTownId: "stormgate", general: { name: "邢黑旗", faction: "red", level: 2, weapon: "runedStaff" }, army: [{ type: "mage", count: 4, level: 1, xp: 0, morale: 68 }, { type: "infantry", count: 12, level: 1, xp: 0, morale: 70 }] },
-    { name: "北望守军", faction: "blue", level: 2, x: 2700, y: 520, homeTownId: "northwatch", stationed: true, general: { name: "孟遥", faction: "blue", level: 2, weapon: "eagleBow" }, army: [{ type: "infantry", count: 18, level: 2, xp: 0, morale: 74 }, { type: "archer", count: 10, level: 2, xp: 0, morale: 72 }] },
-    { name: "风门铁骑", faction: "red", level: 3, x: 3120, y: 1080, homeTownId: "stormgate", stationed: true, general: { name: "拓跋铮", faction: "red", level: 3, weapon: "goldHalberd" }, army: [{ type: "cavalry", count: 12, level: 2, xp: 0, morale: 78 }, { type: "pikeman", count: 16, level: 2, xp: 0, morale: 76 }] }
+    { name: "黑旗法师", faction: "red", level: 2, x: 4860, y: 2480, homeTownId: "ironpass", general: { name: "邢黑旗", faction: "red", level: 2, weapon: "runedStaff" }, army: [{ type: "mage", count: 4, level: 1, xp: 0, morale: 68 }, { type: "infantry", count: 12, level: 1, xp: 0, morale: 70 }] },
+    { name: "北望守军", faction: "blue", level: 2, x: 4520, y: 980, homeTownId: "northwatch", stationed: true, general: { name: "孟遥", faction: "blue", level: 2, weapon: "eagleBow" }, army: [{ type: "infantry", count: 18, level: 2, xp: 0, morale: 74 }, { type: "archer", count: 10, level: 2, xp: 0, morale: 72 }] },
+    { name: "风门铁骑", faction: "red", level: 3, x: 5050, y: 3900, homeTownId: "stormgate", stationed: true, general: { name: "拓跋铮", faction: "red", level: 3, weapon: "goldHalberd" }, army: [{ type: "cavalry", count: 12, level: 2, xp: 0, morale: 78 }, { type: "pikeman", count: 16, level: 2, xp: 0, morale: 76 }] },
+    { name: "曦望星骑", faction: "blue", level: 2, x: 4380, y: 1640, homeTownId: "dawnwatch", stationed: true, general: { name: "卫流星", faction: "blue", level: 2, weapon: "eagleBow" }, army: [{ type: "cavalry", count: 7, level: 2, xp: 0, morale: 76 }, { type: "archer", count: 12, level: 2, xp: 0, morale: 74 }] },
+    { name: "烬落斧卫", faction: "red", level: 2, x: 2670, y: 3180, homeTownId: "emberfall", stationed: true, general: { name: "燕火卫", faction: "red", level: 2, weapon: "wolfAxe" }, army: [{ type: "infantry", count: 18, level: 2, xp: 0, morale: 76 }, { type: "pikeman", count: 12, level: 2, xp: 0, morale: 74 }] },
+    { name: "霜渡游哨", faction: "blue", level: 2, x: 1320, y: 3060, homeTownId: "frostford", general: { name: "岑寒哨", faction: "blue", level: 2, weapon: "eagleBow" }, army: [{ type: "archer", count: 12, level: 2, xp: 0, morale: 74 }, { type: "pikeman", count: 8, level: 1, xp: 0, morale: 70 }] },
+    { name: "玄岩斥候", faction: "red", level: 2, x: 3440, y: 5480, homeTownId: "ravenrock", stationed: true, general: { name: "狄黑羽", faction: "red", level: 2, weapon: "wolfAxe" }, army: [{ type: "cavalry", count: 6, level: 2, xp: 0, morale: 74 }, { type: "infantry", count: 12, level: 2, xp: 0, morale: 72 }] }
   ];
 
   for (const seed of seeds) {
     npcs.push(createNpc(seed, map));
   }
 
-  for (let i = 0; i < 5; i += 1) {
+  for (let i = 0; i < 9; i += 1) {
     npcs.push(createWildBand(map, 1 + (i % 2)));
   }
   return npcs;
@@ -46,7 +50,9 @@ function createNpc(seed, map) {
     general: applyRandomGeneralAttributes(seed.general),
     army: createArmy(seed.army),
     alive: true,
-    kind: "lord"
+    kind: "lord",
+    facing: seed.facing || "down",
+    facingAngle: Math.PI
   };
   if (!isPassable(map, npc.x, npc.y)) {
     const pos = findOpenPosition(map);
@@ -80,7 +86,9 @@ export function createWildBand(map, level = 1) {
     }),
     army: createWildArmy(level),
     alive: true,
-    kind: "wild"
+    kind: "wild",
+    facing: "down",
+    facingAngle: Math.PI
   };
 }
 
@@ -275,6 +283,7 @@ function moveNpc(npc, map, dt) {
   const speed = npc.kind === "wild" ? 34 : 46;
   const oldX = npc.x;
   const oldY = npc.y;
+  updateFacing(npc, npc.target.x - npc.x, npc.target.y - npc.y);
   const arrived = moveToward(npc, npc.target.x, npc.target.y, speed, dt);
   if (!isPassable(map, npc.x, npc.y)) {
     npc.x = oldX;
@@ -284,6 +293,19 @@ function moveNpc(npc, map, dt) {
   if (arrived) {
     npc.target = null;
   }
+}
+
+function updateFacing(entity, dx, dy) {
+  if (Math.hypot(dx, dy) < 0.01) {
+    return;
+  }
+  entity.facingAngle = Math.atan2(dy, dx) + Math.PI / 2;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    entity.facing = dx > 0 ? "right" : "left";
+  } else {
+    entity.facing = dy > 0 ? "down" : "up";
+  }
+  entity.lastMoveAt = performance.now();
 }
 
 function handleNpcInteractions(npc, game, dt) {
