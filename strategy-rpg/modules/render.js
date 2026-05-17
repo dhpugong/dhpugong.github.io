@@ -1,4 +1,4 @@
-import { CONFIG, FACTIONS, TERRAIN, TROOP_TYPES } from "./config.js";
+import { CONFIG, FACTIONS, MINIMAP_FACTION_COLORS, MINIMAP_ICON_COLORS, MINIMAP_ICON_SETTINGS, TERRAIN, TROOP_TYPES } from "./config.js";
 import { getBattleTitle } from "./battle.js";
 import { getTerrainById } from "./map.js";
 import { hasSave } from "./save.js";
@@ -605,32 +605,16 @@ function drawMiniMap(ctx, game) {
   for (const town of game.map.towns) {
     const mx = Math.round(ox + town.x * scaleX);
     const my = Math.round(oy + town.y * scaleY);
-    const color = FACTIONS[town.owner] ? FACTIONS[town.owner].color : "#888";
+    const color = getMiniMapFactionColor(town.owner);
     const hasStationedArmy = game.npcs.some((npc) => npc.stationed && npc.homeTownId === town.id && npc.alive !== false);
-    if (hasStationedArmy) {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(mx - 5, my - 5, 11, 11);
-    }
-    ctx.fillStyle = "#070604";
-    ctx.fillRect(mx - 4, my - 4, 9, 9);
-    ctx.fillStyle = color;
-    ctx.fillRect(mx - 3, my - 3, 7, 7);
-    ctx.fillStyle = "#f8e9bd";
-    ctx.fillRect(mx - 1, my - 1, 3, 3);
+    drawMiniMapTownIcon(ctx, mx, my, color, town.kind, hasStationedArmy);
   }
 
   for (const resource of game.map.resources || []) {
     const mx = Math.round(ox + resource.x * scaleX);
     const my = Math.round(oy + resource.y * scaleY);
-    ctx.fillStyle = "#070604";
-    ctx.fillRect(mx - 3, my - 3, 7, 7);
-    ctx.fillStyle = resource.owner === "player" ? "#ffd56a" : resource.kind === "mine" ? "#c8c1b0" : "#74d17a";
-    if (resource.kind === "mine") {
-      ctx.fillRect(mx - 2, my - 2, 5, 5);
-    } else {
-      ctx.fillRect(mx - 2, my - 1, 5, 3);
-      ctx.fillRect(mx - 1, my - 2, 3, 5);
-    }
+    const ownerColor = FACTIONS[resource.owner] ? FACTIONS[resource.owner].color : "#8f8060";
+    drawMiniMapResourceIcon(ctx, mx, my, resource.kind, ownerColor, resource.owner === "player");
   }
 
   // NPC 位置
@@ -648,11 +632,12 @@ function drawMiniMap(ctx, game) {
 
   // 玩家位置（闪烁）
   const pulse = Math.sin(Date.now() / 500) * 0.3 + 0.7;
-  ctx.fillStyle = `rgba(255,213,106,${pulse})`;
-  ctx.fillRect(
-    Math.round(ox + game.player.x * scaleX) - 3,
-    Math.round(oy + game.player.y * scaleY) - 3,
-    6, 6
+  drawMiniMapPlayerArrow(
+    ctx,
+    Math.round(ox + game.player.x * scaleX),
+    Math.round(oy + game.player.y * scaleY),
+    MINIMAP_ICON_COLORS.playerArrow,
+    pulse
   );
 
   // 摄像机视野
@@ -664,6 +649,119 @@ function drawMiniMap(ctx, game) {
     Math.round(CONFIG.canvasWidth * scaleX),
     Math.round(CONFIG.canvasHeight * scaleY)
   );
+}
+
+function drawMiniMapTownIcon(ctx, x, y, color, kind, stationed) {
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  const scale = Math.max(0.45, Math.min(1.6, MINIMAP_ICON_SETTINGS.townScale || 1));
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  x = 0;
+  y = 0;
+
+  // Reference-style castle silhouette. Every visible pixel uses the configured faction color.
+  ctx.fillStyle = color;
+
+  // Upper keep.
+  ctx.fillRect(x - 3, y - 8, 2, 3);
+  ctx.fillRect(x, y - 9, 2, 4);
+  ctx.fillRect(x + 3, y - 8, 2, 3);
+  ctx.fillRect(x - 4, y - 5, 10, 2);
+  ctx.fillRect(x - 3, y - 3, 8, 2);
+
+  // Front battlements.
+  ctx.fillRect(x - 6, y - 2, 2, 2);
+  ctx.fillRect(x - 3, y - 2, 2, 2);
+  ctx.fillRect(x, y - 2, 2, 2);
+  ctx.fillRect(x + 3, y - 2, 2, 2);
+  ctx.fillRect(x + 6, y - 2, 2, 2);
+  ctx.fillRect(x - 7, y, 16, 2);
+
+  // Lower towers and hall. The gaps are transparent windows/door.
+  ctx.fillRect(x - 6, y + 2, 3, 5);
+  ctx.fillRect(x + 5, y + 2, 3, 5);
+  ctx.fillRect(x - 2, y + 2, 2, 5);
+  ctx.fillRect(x + 2, y + 2, 2, 5);
+  ctx.fillRect(x, y + 2, 2, 2);
+  ctx.fillRect(x - 2, y + 6, 7, 2);
+
+  if (stationed) {
+    ctx.fillRect(x + 3, y - 11, 1, 3);
+    ctx.fillRect(x + 4, y - 11, 3, 1);
+  }
+
+  if (kind === "castle") {
+    ctx.fillRect(x - 8, y - 3, 1, 3);
+    ctx.fillRect(x + 8, y - 3, 1, 3);
+  } else if (kind === "tavern") {
+    ctx.fillRect(x + 5, y - 7, 3, 1);
+    ctx.fillRect(x + 6, y - 6, 1, 3);
+  }
+
+  ctx.restore();
+}
+
+function getMiniMapFactionColor(factionId) {
+  return MINIMAP_FACTION_COLORS[factionId]
+    || (FACTIONS[factionId] ? FACTIONS[factionId].color : "#f0e0a6");
+}
+
+function drawMiniMapResourceIcon(ctx, x, y, kind, ownerColor, ownedByPlayer) {
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  const scaleKey = kind === "mine" ? "mineScale" : "farmScale";
+  const scale = Math.max(0.35, Math.min(1.4, MINIMAP_ICON_SETTINGS[scaleKey] || 1));
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  x = 0;
+  y = 0;
+  const accent = ownedByPlayer ? MINIMAP_ICON_COLORS.ownedAccent : ownerColor;
+
+  if (kind === "mine") {
+    ctx.fillStyle = MINIMAP_ICON_COLORS.mineBody;
+    ctx.fillRect(x - 15, y - 2, 30, 16);
+    ctx.fillStyle = MINIMAP_ICON_COLORS.mineTop;
+    ctx.fillRect(x - 11, y - 9, 22, 10);
+    ctx.fillStyle = MINIMAP_ICON_COLORS.mineDoor;
+    ctx.fillRect(x - 5, y + 1, 10, 13);
+    ctx.fillStyle = accent;
+    ctx.fillRect(x - 13, y - 4, 4, 4);
+    ctx.fillRect(x + 9, y - 3, 4, 3);
+    ctx.fillStyle = MINIMAP_ICON_COLORS.mineAccent;
+    ctx.fillRect(x - 1, y - 6, 3, 3);
+  } else {
+    ctx.fillStyle = MINIMAP_ICON_COLORS.farmSoil;
+    ctx.fillRect(x - 16, y - 6, 32, 20);
+    ctx.fillStyle = MINIMAP_ICON_COLORS.farmCrop;
+    for (let i = -14; i <= 12; i += 6) {
+      ctx.fillRect(x + i, y - 4, 3, 17);
+    }
+    ctx.fillStyle = accent;
+    ctx.fillRect(x - 5, y - 15, 10, 8);
+    ctx.fillStyle = MINIMAP_ICON_COLORS.farmBarn;
+    ctx.fillRect(x - 2, y - 12, 4, 4);
+  }
+
+  ctx.restore();
+}
+
+function drawMiniMapPlayerArrow(ctx, x, y, color, alpha) {
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  const scale = Math.max(0.45, Math.min(1.8, MINIMAP_ICON_SETTINGS.playerScale || 1));
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, -8);
+  ctx.lineTo(8, 7);
+  ctx.lineTo(0, 4);
+  ctx.lineTo(-8, 7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 function getMiniMapTerrainCanvas(map, mapW, mapH, cellW, cellH, scaleX, scaleY) {

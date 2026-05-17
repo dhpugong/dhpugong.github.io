@@ -1,5 +1,4 @@
 import { CONFIG, FACTIONS, SKILLS, TROOP_TYPES, WEAPONS } from "./config.js";
-import { ensurePassablePosition, clampToMap } from "./map.js";
 import { addPlayerExp, getPlayerBattleBonus } from "./player.js";
 import { getGeneralBattleBonus } from "./generals.js";
 import { addWarReport } from "./reports.js";
@@ -17,6 +16,15 @@ import { clamp, distanceXY, rand, randInt } from "./utils.js";
 // 战斗模块：横版自动战斗、阵型编排、技能释放和伤亡结算。
 
 const BATTLE_MOVE_SPEED_MULTIPLIER = 2;
+const EMPTY_WEAPON = {
+  id: "none",
+  name: "未装备",
+  attack: 0,
+  defense: 0,
+  range: 30,
+  crit: 0,
+  color: "#8f8060"
+};
 
 export function startBattle(game, options) {
   const enemy = options.enemy;
@@ -70,7 +78,7 @@ function deployGeneral(battle, general, side, bonus) {
     return;
   }
 
-  const weapon = WEAPONS[general.weapon] || WEAPONS.oldSword;
+  const weapon = WEAPONS[general.weapon] || EMPTY_WEAPON;
   const generalBonus = getGeneralBattleBonus(general);
   const dir = side === "left" ? 1 : -1;
   const level = general.level || 1;
@@ -111,14 +119,12 @@ function deployFormation(battle, army, side, bonus) {
   const baseX = side === "left" ? 150 : CONFIG.battleWidth - 150;
 
   // 前排在靠近中心处，后排在后方
-  const roleOrder = side === "left"
-    ? ["infantry", "pikeman", "cavalry", "archer", "mage"]
-    : ["infantry", "pikeman", "cavalry", "archer", "mage"];
+  const roleOrder = ["infantry", "pikeman", "cavalry", "archer", "mage"];
 
   const usedStacks = [];
   for (const role of roleOrder) {
-    const stack = army.find((s) => s.type === role);
-    if (stack && stack.count > 0) {
+    const stacks = army.filter((s) => s.type === role && s.count > 0);
+    for (const stack of stacks) {
       usedStacks.push(stack);
     }
   }
@@ -126,17 +132,17 @@ function deployFormation(battle, army, side, bonus) {
   let rowIndex = 0;
   for (const stack of usedStacks) {
     const stats = getTroopBattleStats(stack);
-    const count = Math.min(stack.count, 20);
-    const cols = Math.ceil(count / 4);
+    const count = stack.count;
+    const laneCount = Math.min(6, Math.max(3, Math.ceil(Math.sqrt(count))));
+    const cols = Math.ceil(count / laneCount);
     const isRanged = stats.range > 80;
-    const isFast = stats.speed > 45;
 
     // 远程放在后面几排
     const rowOffset = isRanged ? rowIndex + 0.5 : rowIndex;
 
     for (let i = 0; i < count; i += 1) {
-      const col = Math.floor(i / 4);
-      const lane = (i % 4) - 1.5; // 4 列布局，-1.5/-0.5/0.5/1.5
+      const col = Math.floor(i / laneCount);
+      const lane = (i % laneCount) - (laneCount - 1) / 2;
       const hp = Math.round(stats.hp * (bonus ? 1 + bonus.morale / 180 : 1));
 
       // 错开位置避免重叠
@@ -144,12 +150,12 @@ function deployFormation(battle, army, side, bonus) {
       const staggerY = (col % 2) * 3;
 
       battle.units.push({
-        id: side + "-" + stack.type + "-" + i + "-" + Math.random().toString(16).slice(2),
+        id: side + "-" + stack.type + "-lv" + stack.level + "-" + i + "-" + Math.random().toString(16).slice(2),
         side,
         type: stack.type,
         stackLevel: stack.level,
-        x: baseX - dir * col * 20 - dir * rowOffset * 14 + staggerX,
-        y: 160 + lane * 28 + rowOffset * 12 + staggerY,
+        x: baseX - dir * col * 16 - dir * rowOffset * 12 + staggerX,
+        y: 160 + lane * 22 + rowOffset * 13 + staggerY,
         vx: 0,
         hp,
         maxHp: hp,
@@ -458,11 +464,12 @@ function settleBattle(game, battle) {
       summary.lines.push("缴获武器：" + dropped.name);
     }
 
-    if (battle.enemy.alive !== undefined && !hasArmy(battle.enemy.army)) {
+    if (battle.enemy.alive !== undefined && !battle.isSiege) {
       battle.enemy.alive = false;
       summary.lines.push(battle.enemy.name + " 已被击溃");
-    } else if (!battle.isSiege) {
-      retreatDefeatedEnemy(game, battle.enemy);
+    } else if (battle.enemy.alive !== undefined && !hasArmy(battle.enemy.army)) {
+      battle.enemy.alive = false;
+      summary.lines.push(battle.enemy.name + " 已被击溃");
     }
 
     if (battle.isSiege && battle.targetTown) {
@@ -520,22 +527,6 @@ function formatLossLine(playerLosses, playerDeaths, enemyLosses, enemyDeaths) {
   return "我军倒下 " + playerLosses + "，实际阵亡 " + playerDeaths + "；敌军倒下 " + enemyLosses + "，实际阵亡 " + enemyDeaths;
 }
 
-function retreatDefeatedEnemy(game, enemy) {
-  if (!enemy || typeof enemy.x !== "number" || typeof enemy.y !== "number") {
-    return;
-  }
-  const dx = enemy.x - game.player.x;
-  const dy = enemy.y - game.player.y;
-  const len = Math.max(1, Math.hypot(dx, dy));
-  enemy.x += (dx / len) * rand(96, 148);
-  enemy.y += (dy / len) * rand(96, 148);
-  enemy.target = null;
-  enemy.state = "patrol";
-  enemy.siegeTimer = 0;
-  clampToMap(game.map, enemy);
-  ensurePassablePosition(game.map, enemy);
-}
-
 function rollWeaponDrop(game, battle) {
   const general = battle.enemyGeneral;
   if (!general || !general.weapon) {
@@ -547,19 +538,48 @@ function rollWeaponDrop(game, battle) {
     return null;
   }
 
-  if (!game.player.inventory) {
-    game.player.inventory = [];
-  }
-  game.player.inventory.push(weapon.id);
+  addWeaponToInventory(game.player, weapon.id);
   if (game.player.general) {
-    const current = WEAPONS[game.player.general.weapon] || WEAPONS.oldSword;
+    const currentWeaponId = getEquippedWeaponId(game.player);
+    const current = currentWeaponId ? WEAPONS[currentWeaponId] : EMPTY_WEAPON;
     if (weapon.attack + weapon.defense > current.attack + current.defense) {
+      removeWeaponFromInventory(game.player, weapon.id);
+      if (currentWeaponId) {
+        addWeaponToInventory(game.player, currentWeaponId);
+      }
       game.player.general.weapon = weapon.id;
+      if (!game.player.equipment) {
+        game.player.equipment = { weapon: "未装备", armor: "未装备", trinket: "未装备" };
+      }
       game.player.equipment.weapon = weapon.name;
     }
   }
   addWarReport(game, "缴获 " + weapon.name, "good");
   return weapon;
+}
+
+function getEquippedWeaponId(player) {
+  const weaponId = player && player.general ? player.general.weapon : null;
+  return weaponId && WEAPONS[weaponId] ? weaponId : null;
+}
+
+function addWeaponToInventory(player, weaponId) {
+  if (!WEAPONS[weaponId]) {
+    return;
+  }
+  if (!player.inventory) {
+    player.inventory = [];
+  }
+  removeWeaponFromInventory(player, weaponId);
+  player.inventory.push(weaponId);
+}
+
+function removeWeaponFromInventory(player, weaponId) {
+  if (!player.inventory) {
+    player.inventory = [];
+    return;
+  }
+  player.inventory = player.inventory.filter((id) => id !== weaponId);
 }
 
 function countCasualties(map) {

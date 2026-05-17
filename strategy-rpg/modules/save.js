@@ -1,4 +1,4 @@
-import { CONFIG } from "./config.js";
+import { CONFIG, WEAPONS } from "./config.js";
 import { TOWN_INCOME, RESOURCE_INCOME } from "../data/economy.js";
 import { createInitialNpcs } from "./ai.js";
 import { createWorldMap, ensurePassablePosition } from "./map.js";
@@ -86,9 +86,7 @@ export function applySaveToGame(game, data) {
   if (!game.player.inventory) {
     game.player.inventory = [];
   }
-  if (!game.player.equipment) {
-    game.player.equipment = { weapon: "旧王短剑", armor: "旅人皮甲", trinket: "铁冠纹章" };
-  }
+  normalizePlayerEquipment(game.player);
   game.player.target = null;
   ensurePassablePosition(game.map, game.player);
   game.npcs = data.npcs || createInitialNpcs(game.map);
@@ -114,6 +112,26 @@ export function applySaveToGame(game, data) {
   game.pendingEncounter = null;
   game.message = "读档完成";
   return true;
+}
+
+function normalizePlayerEquipment(player) {
+  if (!player.equipment) {
+    player.equipment = { weapon: getSavedWeaponName(player), armor: "未装备", trinket: "未装备" };
+  }
+  if (!player.equipment.weapon) {
+    player.equipment.weapon = getSavedWeaponName(player);
+  }
+  if (!player.equipment.armor || player.equipment.armor === "旅人皮甲") {
+    player.equipment.armor = "未装备";
+  }
+  if (!player.equipment.trinket || player.equipment.trinket === "铁冠纹章") {
+    player.equipment.trinket = "未装备";
+  }
+}
+
+function getSavedWeaponName(player) {
+  const weaponId = player.general ? player.general.weapon : null;
+  return weaponId && WEAPONS[weaponId] ? WEAPONS[weaponId].name : "未装备";
 }
 
 function mergeTemplateItems(targetItems, savedItems) {

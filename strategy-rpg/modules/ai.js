@@ -200,14 +200,28 @@ function think(npc, game) {
   const npcPower = getArmyPower(npc.army);
   const playerPower = getArmyPower(game.player.army);
 
-  if (npc.faction !== "neutral" && playerDistance < 240 && npcPower > playerPower * 0.55) {
-    npc.state = "chase";
-    npc.target = { x: game.player.x, y: game.player.y };
-    return;
+  if (npc.faction !== "neutral" && playerDistance < 260) {
+    if (npcPower < playerPower) {
+      retreatFromPlayer(npc, game);
+      return;
+    }
+    if (npcPower > playerPower * 1.08) {
+      npc.state = "chase";
+      npc.target = { x: game.player.x, y: game.player.y };
+      return;
+    }
   }
 
   const enemyTown = findSiegeTarget(npc, game.map.towns);
   if (enemyTown && npc.kind === "lord" && Math.random() < 0.34) {
+    const attackPower = getArmyPower(npc.army);
+    const defensePower = getTownDefensePower(enemyTown);
+    if (attackPower < defensePower * 0.9) {
+      npc.state = "patrol";
+      npc.targetTownId = null;
+      npc.reportedSiegeTarget = null;
+      return;
+    }
     npc.state = "siege";
     npc.targetTownId = enemyTown.id;
     npc.target = { x: enemyTown.x, y: enemyTown.y };
@@ -227,6 +241,19 @@ function think(npc, game) {
     };
     npc.state = "patrol";
   }
+}
+
+function retreatFromPlayer(npc, game) {
+  const dx = npc.x - game.player.x;
+  const dy = npc.y - game.player.y;
+  const len = Math.max(1, Math.hypot(dx, dy));
+  npc.state = "retreat";
+  npc.targetTownId = null;
+  npc.reportedSiegeTarget = null;
+  npc.target = {
+    x: npc.x + (dx / len) * rand(180, 320),
+    y: npc.y + (dy / len) * rand(180, 320)
+  };
 }
 
 function findSiegeTarget(npc, towns) {
@@ -285,8 +312,23 @@ function handleNpcInteractions(npc, game, dt) {
   }
 
   npc.siegeTimer += dt;
-  town.defense = Math.max(12, town.defense - dt * 1.5);
-  if (npc.siegeTimer > 9 || getArmyPower(npc.army) > getArmyPower(town.garrison) + town.defense * 2.2) {
+  const attackPower = getArmyPower(npc.army);
+  const defensePower = getTownDefensePower(town);
+  if (attackPower < defensePower * 0.88) {
+    npc.siegeTimer = 0;
+    npc.state = "patrol";
+    npc.targetTownId = null;
+    npc.reportedSiegeTarget = null;
+    npc.army = applySiegeLosses(npc.army, 0.08);
+    addWarReport(game, FACTIONS[npc.faction].name + " 进攻 " + town.name + " 失败", town.owner === "player" ? "good" : "neutral");
+    if (!npc.army.length) {
+      npc.alive = false;
+    }
+    return;
+  }
+
+  town.defense = Math.max(12, town.defense - dt * Math.max(0.25, attackPower / Math.max(1, defensePower)) * 0.9);
+  if (npc.siegeTimer > 9 && resolveSiegeByPower(attackPower, defensePower)) {
     const oldOwner = town.owner;
     town.owner = npc.faction;
     town.defense = Math.max(34, Math.round(town.defense * 0.72));
@@ -296,7 +338,39 @@ function handleNpcInteractions(npc, game, dt) {
     npc.reportedSiegeTarget = null;
     game.log.unshift(`${FACTIONS[npc.faction].name} 占领 ${town.name}，原归属 ${FACTIONS[oldOwner].name}`);
     addWarReport(game, FACTIONS[npc.faction].name + " 攻下 " + town.name, oldOwner === "player" ? "bad" : "neutral");
+  } else if (npc.siegeTimer > 9) {
+    npc.siegeTimer = 0;
+    npc.state = "patrol";
+    npc.targetTownId = null;
+    npc.reportedSiegeTarget = null;
+    npc.army = applySiegeLosses(npc.army, 0.12);
+    addWarReport(game, FACTIONS[npc.faction].name + " 进攻 " + town.name + " 被击退", town.owner === "player" ? "good" : "neutral");
+    if (!npc.army.length) {
+      npc.alive = false;
+    }
   }
+}
+
+function getTownDefensePower(town) {
+  return getArmyPower(town.garrison || []) + Math.max(0, town.defense || 0) * 18;
+}
+
+function resolveSiegeByPower(attackPower, defensePower) {
+  const ratio = attackPower / Math.max(1, defensePower);
+  if (ratio >= 1.25) {
+    return true;
+  }
+  if (ratio <= 0.92) {
+    return false;
+  }
+  return Math.random() < (ratio - 0.92) / 0.33;
+}
+
+function applySiegeLosses(army, rate) {
+  return createArmy((army || []).map(function (unit) {
+    const lost = Math.max(1, Math.floor(unit.count * rate));
+    return { ...unit, count: Math.max(0, unit.count - lost), morale: Math.max(25, unit.morale - 8) };
+  }));
 }
 
 export function spawnWildIfNeeded(game, dt) {

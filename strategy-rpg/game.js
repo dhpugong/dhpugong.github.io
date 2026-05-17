@@ -117,6 +117,9 @@ function handleGlobalShortcuts() {
     if (game.privilege && game.privilege.open) {
       game.privilege.open = false;
     } else if (game.state === "menu") {
+      if (game.ui) {
+        game.ui.attributeSession = null;
+      }
       game.state = "world";
       game.message = "回到大地图";
     } else if (game.state === "settings") {
@@ -132,6 +135,9 @@ function handleGlobalShortcuts() {
     } else if (game.state === "encounter") {
       fleeEncounter();
     } else if (game.state === "world") {
+      if (game.ui) {
+        game.ui.attributeSession = null;
+      }
       game.state = "menu";
       game.message = "打开军务菜单";
     }

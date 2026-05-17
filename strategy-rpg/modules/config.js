@@ -58,6 +58,33 @@ export const FACTIONS = {
   wild: { id: "wild", name: "荒野群落", color: "#7b8f44" }
 };
 
+export const MINIMAP_FACTION_COLORS = {
+  player: "#ffd13a",
+  neutral: "#ffeba2",
+  red: "#ff1100",
+  blue: "#0084ffbe",
+  wild: "#a0f403"
+};
+
+export const MINIMAP_ICON_SETTINGS = {
+  townScale: 0.7,
+  playerScale: 0.7,
+  mineScale: 0.5,
+  farmScale: 0.5
+};
+
+export const MINIMAP_ICON_COLORS = {
+  playerArrow: "#32ff6a",
+  mineBody: "#7d756a",
+  mineTop: "#d1c7b5",
+  mineDoor: "#2b2724",
+  mineAccent: "#ffe06a",
+  farmSoil: "#8f6735",
+  farmCrop: "#78e05f",
+  farmBarn: "#ffe06a",
+  ownedAccent: "#32ff6a"
+};
+
 export const TROOP_TYPES = TROOP_TYPES_DATA;
 
 export const SKILLS = {
@@ -91,6 +118,7 @@ export const WEAPONS = {
   oldSword: {
     id: "oldSword",
     name: "旧王短剑",
+    quality: "common",
     attack: 8,
     defense: 2,
     range: 34,
@@ -101,6 +129,7 @@ export const WEAPONS = {
   ironSaber: {
     id: "ironSaber",
     name: "铁脊军刀",
+    quality: "uncommon",
     attack: 12,
     defense: 3,
     range: 36,
@@ -111,6 +140,7 @@ export const WEAPONS = {
   wolfAxe: {
     id: "wolfAxe",
     name: "赤狼战斧",
+    quality: "rare",
     attack: 16,
     defense: 2,
     range: 38,
@@ -121,6 +151,7 @@ export const WEAPONS = {
   eagleBow: {
     id: "eagleBow",
     name: "苍鹰长弓",
+    quality: "rare",
     attack: 13,
     defense: 1,
     range: 130,
@@ -131,6 +162,7 @@ export const WEAPONS = {
   runedStaff: {
     id: "runedStaff",
     name: "符文法杖",
+    quality: "epic",
     attack: 18,
     defense: 1,
     range: 118,
@@ -141,6 +173,7 @@ export const WEAPONS = {
   goldHalberd: {
     id: "goldHalberd",
     name: "金纹戟",
+    quality: "legendary",
     attack: 21,
     defense: 5,
     range: 46,
@@ -166,8 +199,8 @@ export const PLAYER_TEMPLATE = {
   },
   equipment: {
     weapon: "旧王短剑",
-    armor: "旅人皮甲",
-    trinket: "铁冠纹章"
+    armor: "未装备",
+    trinket: "未装备"
   },
   general: {
     name: "沈铁冠",

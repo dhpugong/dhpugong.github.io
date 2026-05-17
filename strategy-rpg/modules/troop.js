@@ -37,7 +37,7 @@ export function getArmySize(army) {
 }
 
 export function getMaxArmySize(player) {
-  return 24 + player.attributes.leadership * 8 + player.level * 4;
+  return 8 + player.attributes.leadership * 3 + player.level * 2;
 }
 
 export function getArmyPower(army) {
