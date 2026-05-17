@@ -117,18 +117,18 @@ export function growFactionTowns(game) {
 
     const curve = getGrowthCurve(town.owner, "lord");
     const level = town.garrisonLevel || Math.max(1, Math.round(town.general ? town.general.level || 1 : 1));
-    const nextLevel = level + (town.kind === "castle" ? 0.22 : 0.14);
+    const nextLevel = level + (town.kind === "castle" ? 0.1 : 0.06);
     const troopLevel = Math.max(1, Math.min(5, Math.floor(nextLevel)));
-    const scale = town.kind === "castle" ? 1.1 : 0.7;
+    const scale = town.kind === "castle" ? 0.55 : 0.35;
 
     town.garrisonLevel = nextLevel;
-    town.defense = Math.min(240, Math.round(town.defense + (town.kind === "castle" ? 3 : 2)));
+    town.defense = Math.min(220, Math.round(town.defense + (town.kind === "castle" ? 1.4 : 0.9)));
     town.garrison = createArmy([
       ...(town.garrison || []),
       { type: curve.primary, count: Math.ceil((curve.primaryCount + nextLevel * curve.scale) * scale), level: troopLevel, xp: 0, morale: curve.morale },
       { type: curve.secondary, count: Math.ceil((curve.secondaryCount + nextLevel * curve.scale * 0.5) * scale), level: troopLevel, xp: 0, morale: curve.morale - 2 }
     ]);
-    if (Math.random() < curve.upgradeChance) {
+    if (Math.random() < curve.upgradeChance * 0.65) {
       town.garrison = upgradeArmyByBudget(town.garrison, Math.max(1, Math.floor(curve.upgradeBudget * scale))).army;
     }
     if (town.general) {
@@ -153,12 +153,12 @@ function updateNpcGrowth(npc, game, dt) {
 
   const troopLevel = Math.max(1, Math.min(5, Math.floor(npc.level)));
   const additions = [
-    { type: curve.primary, count: curve.primaryCount + npc.level * curve.scale, level: troopLevel, xp: 0, morale: curve.morale },
-    { type: curve.secondary, count: curve.secondaryCount + Math.floor(npc.level * curve.scale * 0.6), level: troopLevel, xp: 0, morale: curve.morale - 2 }
+    { type: curve.primary, count: Math.max(1, Math.floor((curve.primaryCount + npc.level * curve.scale) * 0.72)), level: troopLevel, xp: 0, morale: curve.morale },
+    { type: curve.secondary, count: Math.max(1, Math.floor((curve.secondaryCount + npc.level * curve.scale * 0.6) * 0.72)), level: troopLevel, xp: 0, morale: curve.morale - 2 }
   ];
   npc.army = createArmy([...(npc.army || []), ...additions]);
   if (Math.random() < curve.upgradeChance) {
-    npc.army = upgradeArmyByBudget(npc.army, curve.upgradeBudget).army;
+    npc.army = upgradeArmyByBudget(npc.army, Math.max(1, Math.floor(curve.upgradeBudget * 0.75))).army;
   }
 
   if (npc.stationed && Math.random() < curve.mobilizeChance) {
@@ -400,10 +400,10 @@ export function spawnWildIfNeeded(game, dt) {
   if (game.wildSpawnTimer > 0) {
     return;
   }
-  game.wildSpawnTimer = 22;
+  game.wildSpawnTimer = 36;
   const wildCount = game.npcs.filter((npc) => npc.kind === "wild").length;
-  if (wildCount < 7) {
-    const level = randInt(1, Math.max(1, Math.min(4, game.player.level)));
+  if (wildCount < 4) {
+    const level = randInt(1, Math.max(1, Math.min(3, Math.ceil(game.player.level * 0.75))));
     const wild = createWildBand(game.map, level);
     game.npcs.push(wild);
     game.log.unshift(`${wild.name} 出现在边境`);

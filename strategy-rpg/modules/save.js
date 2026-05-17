@@ -90,6 +90,9 @@ export function applySaveToGame(game, data) {
   if (!game.player.inventory) {
     game.player.inventory = [];
   }
+  if (!Array.isArray(game.player.usedPrivilegeCodes)) {
+    game.player.usedPrivilegeCodes = [];
+  }
   ensurePlayerGoods(game.player);
   normalizePlayerEquipment(game.player);
   game.player.target = null;

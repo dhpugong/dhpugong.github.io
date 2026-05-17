@@ -12,7 +12,7 @@ export const CONFIG = {
   cameraLerp: 0.12,
   clickArriveDistance: 6,
   autoSaveInterval: 14,
-  wildSpawnInterval: 22,
+  wildSpawnInterval: 36,
   dayLength: 38,
   targetFps: {
     start: 24,

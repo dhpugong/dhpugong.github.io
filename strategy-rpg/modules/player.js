@@ -11,6 +11,7 @@ export function createPlayer() {
   player.ownedTowns = [];
   player.ownedResources = [];
   player.inventory = [];
+  player.usedPrivilegeCodes = [];
   ensurePlayerGoods(player);
   player.day = 1;
   player.unified = false;

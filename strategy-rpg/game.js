@@ -24,8 +24,6 @@ import { closeWorldMapToPlayer, createWorldMapState, handleWorldMapClick, handle
 
 const WORLD_MOVE_SPEED_MULTIPLIER = 1.3;
 const PRIVILEGE_FILE = "./privilege.txt";
-const PRIVILEGE_USED_KEY = CONFIG.saveKey + "-privilege-used";
-
 var canvas = document.querySelector("#gameCanvas");
 var display = createDisplay(canvas);
 var renderer = createRenderer(canvas, display);
@@ -653,6 +651,7 @@ function startNewGame() {
   game.state = "world";
   game.map = freshGame.map;
   game.player = freshGame.player || createPlayer();
+  game.player.usedPrivilegeCodes = [];
   clearUnitPath(game.player);
   game.fog = createFogOfWar(game.map);
   updateFogOfWar(game.fog, game.map, game.player, true);
@@ -780,26 +779,24 @@ async function redeemPrivilegeCode() {
 }
 
 function hasUsedPrivilegeCode(code) {
-  try {
-    const used = JSON.parse(localStorage.getItem(PRIVILEGE_USED_KEY) || "[]");
-    return Array.isArray(used) && used.includes(code);
-  } catch (error) {
-    return false;
-  }
+  ensurePrivilegeCodeState();
+  return game.player.usedPrivilegeCodes.includes(code);
 }
 
 function markPrivilegeCodeUsed(code) {
-  let used = [];
-  try {
-    const parsed = JSON.parse(localStorage.getItem(PRIVILEGE_USED_KEY) || "[]");
-    used = Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    used = [];
+  ensurePrivilegeCodeState();
+  if (!game.player.usedPrivilegeCodes.includes(code)) {
+    game.player.usedPrivilegeCodes.push(code);
   }
-  if (!used.includes(code)) {
-    used.push(code);
+}
+
+function ensurePrivilegeCodeState() {
+  if (!game.player) {
+    return;
   }
-  localStorage.setItem(PRIVILEGE_USED_KEY, JSON.stringify(used));
+  if (!Array.isArray(game.player.usedPrivilegeCodes)) {
+    game.player.usedPrivilegeCodes = [];
+  }
 }
 
 function updateNotice(dt) {
