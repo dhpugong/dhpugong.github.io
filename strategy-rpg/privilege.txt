@@ -1,2 +1,2 @@
-pugong
-1000
+dhpugong
+10000
