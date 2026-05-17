@@ -123,6 +123,45 @@ export function getTroopUpgradeCost(unit) {
   return Math.max(0, Math.round((nextStats.upgradeCost || 0) * unit.count));
 }
 
+export function getSingleTroopUpgradeCost(unit) {
+  if (!unit || unit.level >= getMaxTroopLevel(unit.type)) {
+    return 0;
+  }
+  const nextStats = getTroopLevelStats(unit.type, unit.level + 1);
+  return Math.max(0, Math.round(nextStats.upgradeCost || 0));
+}
+
+export function upgradeSingleTroop(player, stackIndex) {
+  const index = Number(stackIndex);
+  const unit = player.army[index];
+  if (!unit || unit.count <= 0) {
+    return { ok: false, message: "没有这名士兵" };
+  }
+  if (unit.level >= getMaxTroopLevel(unit.type)) {
+    return { ok: false, message: "该士兵已满级" };
+  }
+  const cost = getSingleTroopUpgradeCost(unit);
+  if (player.gold < cost) {
+    return { ok: false, message: "金币不足" };
+  }
+
+  player.gold -= cost;
+  unit.count -= 1;
+  const upgraded = {
+    type: unit.type,
+    count: 1,
+    level: unit.level + 1,
+    xp: 0,
+    morale: Math.min(100, unit.morale + 4)
+  };
+  player.army = mergeArmy([
+    ...player.army.filter((item) => item.count > 0),
+    upgraded
+  ]);
+  const type = TROOP_TYPES[unit.type];
+  return { ok: true, message: `${type.name} 升至 Lv.${upgraded.level}，花费 ${cost} 金`, upgraded };
+}
+
 export function upgradeArmyStack(player, stackIndex) {
   const index = Number(stackIndex);
   const unit = player.army[index];

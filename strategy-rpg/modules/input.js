@@ -1,8 +1,9 @@
 import { CONFIG } from "./config.js";
+import { canvasPointToGame } from "./display.js";
 import { rectContains } from "./utils.js";
 
 // 输入模块统一收集键盘、鼠标和 UI 点击，不把 DOM 事件散落到业务模块。
-export function createInput(canvas) {
+export function createInput(canvas, display) {
   const input = {
     keys: new Set(),
     textEvents: [],
@@ -48,7 +49,7 @@ export function createInput(canvas) {
   });
 
   canvas.addEventListener("mousemove", (event) => {
-    const pos = getCanvasPoint(canvas, event);
+    const pos = getCanvasPoint(canvas, event, display);
     input.mouse.dragDx += pos.x - input.mouse.x;
     input.mouse.dragDy += pos.y - input.mouse.y;
     input.mouse.prevX = input.mouse.x;
@@ -58,7 +59,7 @@ export function createInput(canvas) {
   });
 
   canvas.addEventListener("mousedown", (event) => {
-    const pos = getCanvasPoint(canvas, event);
+    const pos = getCanvasPoint(canvas, event, display);
     input.mouse.x = pos.x;
     input.mouse.y = pos.y;
     input.mouse.prevX = pos.x;
@@ -73,14 +74,14 @@ export function createInput(canvas) {
   });
 
   canvas.addEventListener("click", (event) => {
-    const pos = getCanvasPoint(canvas, event);
+    const pos = getCanvasPoint(canvas, event, display);
     input.mouse.x = pos.x;
     input.mouse.y = pos.y;
     input.mouse.clicked = true;
   });
 
   canvas.addEventListener("dblclick", (event) => {
-    const pos = getCanvasPoint(canvas, event);
+    const pos = getCanvasPoint(canvas, event, display);
     input.mouse.x = pos.x;
     input.mouse.y = pos.y;
     input.mouse.doubleClicked = true;
@@ -163,7 +164,10 @@ export function hitButton(buttons, point) {
   return buttons.find((button) => !button.disabled && rectContains(button, point.x, point.y)) || null;
 }
 
-function getCanvasPoint(canvas, event) {
+function getCanvasPoint(canvas, event, display) {
+  if (display) {
+    return canvasPointToGame(display, event);
+  }
   const rect = canvas.getBoundingClientRect();
   return {
     x: ((event.clientX - rect.left) / rect.width) * CONFIG.canvasWidth,

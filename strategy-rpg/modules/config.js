@@ -137,6 +137,28 @@ export const WEAPONS = {
     dropChance: 0.28,
     color: "#d8d2c6"
   },
+  guardSpear: {
+    id: "guardSpear",
+    name: "城卫长矛",
+    quality: "common",
+    attack: 10,
+    defense: 4,
+    range: 58,
+    crit: 0.04,
+    dropChance: 0.12,
+    color: "#c9c2ad"
+  },
+  rangerKnife: {
+    id: "rangerKnife",
+    name: "游侠短刀",
+    quality: "uncommon",
+    attack: 11,
+    defense: 1,
+    range: 32,
+    crit: 0.16,
+    dropChance: 0.14,
+    color: "#9fd6a0"
+  },
   wolfAxe: {
     id: "wolfAxe",
     name: "赤狼战斧",
@@ -147,6 +169,17 @@ export const WEAPONS = {
     crit: 0.1,
     dropChance: 0.32,
     color: "#d66a4a"
+  },
+  blackPike: {
+    id: "blackPike",
+    name: "玄铁长枪",
+    quality: "rare",
+    attack: 15,
+    defense: 4,
+    range: 68,
+    crit: 0.08,
+    dropChance: 0.18,
+    color: "#8ea0aa"
   },
   eagleBow: {
     id: "eagleBow",
@@ -159,6 +192,17 @@ export const WEAPONS = {
     dropChance: 0.3,
     color: "#9ed2f0"
   },
+  moonCrossbow: {
+    id: "moonCrossbow",
+    name: "月井弩",
+    quality: "rare",
+    attack: 15,
+    defense: 2,
+    range: 108,
+    crit: 0.18,
+    dropChance: 0.16,
+    color: "#b7c9ff"
+  },
   runedStaff: {
     id: "runedStaff",
     name: "符文法杖",
@@ -169,6 +213,28 @@ export const WEAPONS = {
     crit: 0.12,
     dropChance: 0.24,
     color: "#c79bff"
+  },
+  frostMace: {
+    id: "frostMace",
+    name: "霜铁战锤",
+    quality: "epic",
+    attack: 19,
+    defense: 6,
+    range: 40,
+    crit: 0.06,
+    dropChance: 0.12,
+    color: "#9edfff"
+  },
+  emberBlade: {
+    id: "emberBlade",
+    name: "烬火弯刃",
+    quality: "epic",
+    attack: 20,
+    defense: 2,
+    range: 38,
+    crit: 0.17,
+    dropChance: 0.12,
+    color: "#ff8a5c"
   },
   goldHalberd: {
     id: "goldHalberd",

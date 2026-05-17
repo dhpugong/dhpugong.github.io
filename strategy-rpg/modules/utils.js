@@ -61,21 +61,62 @@ export function moveToward(entity, targetX, targetY, speed, dt) {
   return false;
 }
 
+export const UI_FONT_FAMILY = '"Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+export const NUMBER_FONT_FAMILY = 'Consolas, "Microsoft YaHei UI", "Microsoft YaHei", monospace';
+
 export function drawPixelText(ctx, text, x, y, color = "#f8e9bd", size = 14, align = "left") {
+  const fontSize = normalizeUiFontSize(size);
+  const weight = getUiFontWeight(fontSize);
+  const px = Math.round(x);
+  const py = Math.round(y);
+
   ctx.save();
   ctx.imageSmoothingEnabled = false;
+  ctx.fontKerning = "none";
   ctx.fillStyle = color;
-  ctx.font = `${size >= 12 ? 600 : 500} ${size}px "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif`;
+  ctx.font = `${weight} ${fontSize}px ${UI_FONT_FAMILY}`;
   ctx.textAlign = align;
   ctx.textBaseline = "top";
-  if (size >= 11) {
-    ctx.lineWidth = Math.max(2, Math.round(size / 8));
+  if (fontSize >= 10) {
+    ctx.lineWidth = Math.max(2, Math.round(fontSize / 10));
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "rgba(5, 3, 2, 0.72)";
-    ctx.strokeText(text, Math.round(x), Math.round(y));
+    ctx.strokeStyle = "rgba(5, 8, 12, 0.78)";
+    ctx.strokeText(String(text), px, py);
   }
-  ctx.fillText(text, Math.round(x), Math.round(y));
+  if (fontSize >= 16) {
+    ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+    ctx.shadowBlur = 2;
+    ctx.shadowOffsetY = 1;
+  }
+  ctx.fillText(String(text), px, py);
   ctx.restore();
+}
+
+export function setupCanvasFont(ctx, size = 14, weight = 700, family = UI_FONT_FAMILY, align = "left", baseline = "top") {
+  ctx.imageSmoothingEnabled = false;
+  ctx.fontKerning = "none";
+  ctx.font = `${weight} ${normalizeUiFontSize(size)}px ${family}`;
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+}
+
+export function normalizeUiFontSize(size) {
+  const requested = Math.round(Number(size) || 14);
+  if (requested <= 10) return Math.max(10, requested);
+  if (requested <= 12) return 12;
+  if (requested <= 15) return 14;
+  if (requested <= 17) return 16;
+  if (requested <= 21) return 20;
+  if (requested <= 25) return 24;
+  if (requested <= 33) return 32;
+  return requested;
+}
+
+function getUiFontWeight(size) {
+  if (size >= 24) return 900;
+  if (size >= 18) return 800;
+  if (size >= 12) return 700;
+  return 650;
 }
 
 export function drawBar(ctx, x, y, w, h, ratio, fill, back = "#28170c", border = "#8f682e") {
@@ -101,8 +142,8 @@ export function drawPanel(ctx, x, y, w, h, title = "") {
   ctx.strokeRect(Math.round(x + 4) + 0.5, Math.round(y + 4) + 0.5, Math.round(w - 8), Math.round(h - 8));
   if (title) {
     ctx.fillStyle = "#0b0805";
-    ctx.fillRect(Math.round(x + 12), Math.round(y - 10), Math.round(title.length * 16 + 24), 22);
-    drawPixelText(ctx, title, x + 24, y - 6, "#ffd56a", 15);
+    ctx.fillRect(Math.round(x + 12), Math.round(y - 11), Math.round(title.length * 16 + 28), 24);
+    drawPixelText(ctx, title, x + 24, y - 7, "#ffd56a", 16);
   }
   ctx.restore();
 }

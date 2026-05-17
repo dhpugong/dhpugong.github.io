@@ -3,9 +3,11 @@ import { TOWN_INCOME, RESOURCE_INCOME } from "../data/economy.js";
 import { createInitialNpcs } from "./ai.js";
 import { createWorldMap, ensurePassablePosition } from "./map.js";
 import { applyRandomGeneralAttributes } from "./generals.js";
+import { ensurePlayerGoods } from "./market.js";
 import { createPlayer } from "./player.js";
 import { normalizeReports } from "./reports.js";
 import { deepClone } from "./utils.js";
+import { serializeFogOfWar } from "../map/fog.js";
 
 // 存档模块：使用 localStorage，支持自动存档、手动保存和读档。
 export function createFreshGameData() {
@@ -29,6 +31,7 @@ export function saveGame(game) {
     npcs: deepClone(game.npcs.filter((npc) => npc.alive)),
     log: deepClone(game.log.slice(0, 20)),
     reports: deepClone((game.reports || []).slice(0, 8)),
+    fog: serializeFogOfWar(game.fog),
     elapsedDayTimer: game.elapsedDayTimer,
     wildSpawnTimer: game.wildSpawnTimer
   };
@@ -87,6 +90,7 @@ export function applySaveToGame(game, data) {
   if (!game.player.inventory) {
     game.player.inventory = [];
   }
+  ensurePlayerGoods(game.player);
   normalizePlayerEquipment(game.player);
   game.player.target = null;
   ensurePassablePosition(game.map, game.player);

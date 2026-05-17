@@ -3,15 +3,25 @@ import { addPlayerExp, getTownDailyIncome, refreshOwnedTowns } from "./player.js
 import { createArmy, getArmyPower, isArmyMoraleFull, mergeArmy, recruitUnit, restoreMorale } from "./troop.js";
 
 // 城池模块：负责占领、税收基础、驻军和招募交互。
+export function resetTownUi(game) {
+  if (!game || !game.ui) {
+    return;
+  }
+  game.ui.townView = "home";
+  game.ui.selectedMarketItem = null;
+}
+
 export function enterTown(game, town) {
   game.state = "town";
   game.activeTown = town;
+  resetTownUi(game);
   game.message = `${town.name}：${FACTIONS[town.owner].name}`;
 }
 
 export function leaveTown(game) {
   game.state = "world";
   game.activeTown = null;
+  resetTownUi(game);
   game.message = "回到大地图";
 }
 

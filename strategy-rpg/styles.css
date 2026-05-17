@@ -36,12 +36,15 @@ body {
   padding: 12px;
 }
 
+.game-shell:fullscreen {
+  padding: 0;
+  background: #050403;
+}
+
 #gameCanvas {
-  width: min(100vw - 24px, 1280px);
-  height: auto;
-  max-height: calc(100vh - 24px);
-  aspect-ratio: 16 / 9;
   display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 
   /* 双层像素边框 */
   border: 4px solid var(--frame);
@@ -55,6 +58,7 @@ body {
     inset 0 0 60px rgba(0, 0, 0, 0.3);
 
   cursor: crosshair;
+  touch-action: none;
 }
 
 /* 游戏容器微光 */
@@ -80,20 +84,11 @@ body {
   letter-spacing: 0.5px;
 }
 
-/* 响应式：窄屏自适应 */
-@media (max-aspect-ratio: 16 / 9) {
-  #gameCanvas {
-    width: auto;
-    height: calc(100vh - 24px);
-  }
-}
-
 @media (max-width: 640px) {
   .game-shell {
     padding: 6px;
   }
   #gameCanvas {
-    width: calc(100vw - 12px);
     border-width: 2px;
   }
 }

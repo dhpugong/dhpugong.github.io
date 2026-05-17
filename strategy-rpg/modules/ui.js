@@ -1,13 +1,15 @@
 import { CONFIG, FACTIONS } from "./config.js";
 import { WEAPONS } from "./config.js";
+import { buyMarketItem, ensurePlayerGoods, getMarketItem, getPlayerSellListings, getTownSellListings, sellMarketItem } from "./market.js";
 import { expToNextLevel, getTownDailyIncome } from "./player.js";
-import { getArmyPower, getArmySize, getMaxArmySize, getMaxTroopLevel, getRecruitOptions, getRosterLines, getTroopLevelStats, getTroopUpgradeCost, isArmyMoraleFull, upgradeArmyStack } from "./troop.js";
-import { developTown, getTownDevelopmentCost, leaveTown, recruitFromTown, restAtTown } from "./town.js";
-import { drawBar, drawPanel, drawPixelText, formatNumber, rectContains } from "./utils.js";
+import { getArmyPower, getArmySize, getMaxArmySize, getMaxTroopLevel, getRecruitOptions, getRosterLines, getSingleTroopUpgradeCost, getTroopLevelStats, isArmyMoraleFull, upgradeSingleTroop } from "./troop.js";
+import { developTown, getTownDevelopmentCost, leaveTown, recruitFromTown, resetTownUi, restAtTown } from "./town.js";
+import { NUMBER_FONT_FAMILY, UI_FONT_FAMILY, drawBar, drawPanel, drawPixelText, formatNumber, rectContains, setupCanvasFont } from "./utils.js";
 
 // UI 模块：维护按钮、HUD、城池面板和菜单面板的绘制与点击处理。
 
-const QUEST_PANEL = { x: 664, y: 64, w: 280, h: 116 };
+const QUEST_PANEL = { x: 706, y: 64, w: 238, h: 116 };
+const ARMY_GRID_LAYOUT = { x: 214, y: 148, cols: 10, rows: 7, cell: 42, gap: 7 };
 
 const EMPTY_WEAPON = {
   id: "none",
@@ -98,11 +100,12 @@ export function drawButton(ctx, button, input) {
   }
 
   // 文字
+  setupCanvasFont(ctx, 14, 800, UI_FONT_FAMILY, "center", "middle");
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(3, 6, 8, 0.82)";
+  ctx.strokeText(button.label, Math.round(x + w / 2), Math.round(drawY + h / 2));
   ctx.fillStyle = disabled ? "#6b5d45" : hovered ? "#fff0a8" : "#ffd56a";
-  ctx.font = "bold 13px Microsoft YaHei UI, Microsoft YaHei, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.imageSmoothingEnabled = false;
   ctx.fillText(button.label, Math.round(x + w / 2), Math.round(drawY + h / 2));
 
   // 可用按钮光晕
@@ -125,19 +128,19 @@ export function drawHud(ctx, game) {
   const maxSize = getMaxArmySize(player);
   const power = Math.round(getArmyPower(player.army));
 
-  drawPanel(ctx, 10, 8, 410, 70, "领主状态");
+  drawPanel(ctx, 10, 8, 287, 70, "领主状态");
   const avatarButton = addButton(game.ui, 24, 26, 40, 40, "", "menu", false, true);
   drawAvatar(ctx, avatarButton, player, game.input);
 
   drawPixelText(ctx, player.name, 78, 25, "#ffd56a", 16);
-  drawPixelText(ctx, "Lv." + player.level, 166, 28, "#d6a84f", 12);
-  drawPixelText(ctx, "第 " + player.day + " 日", 224, 28, "#b9a77a", 12);
+  drawPixelText(ctx, "Lv." + player.level, 176, 28, "#d6a84f", 12);
+  drawPixelText(ctx, "第 " + player.day + " 日", 226, 28, "#b9a77a", 12);
 
-  drawHudMetric(ctx, "金币", formatNumber(player.gold), 78, 48, "#ffe6a6");
-  drawHudMetric(ctx, "兵力", armySize + "/" + maxSize, 166, 48, "#d9f0ff");
-  drawHudMetric(ctx, "战力", String(power), 278, 48, "#ffe6a6");
-  drawBar(ctx, 78, 68, 206, 5, game.elapsedDayTimer / game.dayLength, "#ffd56a", "#28170c", "#5f3f17");
-  drawPixelText(ctx, Math.ceil(Math.max(0, game.dayLength - game.elapsedDayTimer)) + "秒", 294, 63, "#b9a77a", 10);
+  drawHudMetric(ctx, "金", formatNumber(player.gold), 78, 48, "#ffe6a6", 18);
+  drawHudMetric(ctx, "兵", armySize + "/" + maxSize, 148, 48, "#d9f0ff", 18);
+  drawHudMetric(ctx, "战", String(power), 226, 48, "#ffe6a6", 18);
+  drawBar(ctx, 78, 68, 154, 5, game.elapsedDayTimer / game.dayLength, "#ffd56a", "#28170c", "#5f3f17");
+  drawPixelText(ctx, Math.ceil(Math.max(0, game.dayLength - game.elapsedDayTimer)) + "秒", 240, 63, "#b9a77a", 10);
 
   addButton(game.ui, 786, 18, 72, 32, "军队", "army");
   addButton(game.ui, 868, 18, 72, 32, "设置", "settings");
@@ -195,18 +198,16 @@ function drawAvatar(ctx, button, player, input) {
   ctx.restore();
 }
 
-function drawHudMetric(ctx, label, value, x, y, valueColor) {
+function drawHudMetric(ctx, label, value, x, y, valueColor, valueOffset = 31) {
   ctx.save();
-  ctx.textBaseline = "top";
-  ctx.textAlign = "left";
-  ctx.font = "600 12px Microsoft YaHei UI, Microsoft YaHei, sans-serif";
+  setupCanvasFont(ctx, 12, 800, UI_FONT_FAMILY);
   ctx.fillStyle = "#b9a77a";
   ctx.fillText(label, Math.round(x), Math.round(y));
-  ctx.font = "800 16px Consolas, \"Microsoft YaHei UI\", monospace";
+  setupCanvasFont(ctx, 16, 900, NUMBER_FONT_FAMILY);
   ctx.fillStyle = valueColor;
   ctx.shadowColor = "rgba(0,0,0,0.8)";
   ctx.shadowBlur = 2;
-  ctx.fillText(value, Math.round(x + 31), Math.round(y - 2));
+  ctx.fillText(value, Math.round(x + valueOffset), Math.round(y - 2));
   ctx.restore();
 }
 
@@ -249,22 +250,26 @@ function drawQuestTracker(ctx, game) {
   drawGlassPanel(ctx, panelX, panelY, panelW, panelH, title);
   drawQuestCompass(ctx, panelX + panelW - 30, panelY + 21, game.player.facingAngle || Math.PI);
   drawPixelText(ctx, fitPixelText(ctx, objective, panelW - 66, 12), panelX + 18, panelY + 24, "#f8e9bd", 12);
-  drawQuestRow(ctx, "城镇", ownedTowns, towns.length, panelX + 18, panelY + 48, "#ffd56a");
-  drawQuestRow(ctx, "资源", ownedResources, resources.length, panelX + 18, panelY + 68, "#32ff9a");
-  drawQuestRow(ctx, "探索", explored, 100, panelX + 18, panelY + 88, "#7df3ff", "%");
+  drawQuestRow(ctx, "城镇", ownedTowns, towns.length, panelX + 18, panelY + 48, "#ffd56a", "", panelW - 36);
+  drawQuestRow(ctx, "资源", ownedResources, resources.length, panelX + 18, panelY + 68, "#32ff9a", "", panelW - 36);
+  drawQuestRow(ctx, "探索", explored, 100, panelX + 18, panelY + 88, "#7df3ff", "%", panelW - 36);
 }
 
-function drawQuestRow(ctx, label, value, max, x, y, color, suffix) {
+function drawQuestRow(ctx, label, value, max, x, y, color, suffix, rowWidth = 244) {
   const ratio = max > 0 ? Math.min(1, value / max) : 0;
+  const valueText = value + (suffix || "/" + max);
+  const valueX = x + rowWidth;
+  const barX = x + 48;
+  const barW = Math.max(64, rowWidth - 86);
   drawPixelText(ctx, label, x, y - 2, "#b9a77a", 10);
   ctx.fillStyle = "rgba(0,0,0,0.42)";
-  ctx.fillRect(x + 48, y, 150, 7);
+  ctx.fillRect(barX, y, barW, 7);
   ctx.fillStyle = color;
-  ctx.fillRect(x + 48, y, Math.round(150 * ratio), 7);
+  ctx.fillRect(barX, y, Math.round(barW * ratio), 7);
   ctx.strokeStyle = "rgba(248,233,189,0.26)";
   ctx.lineWidth = 1;
-  ctx.strokeRect(x + 48.5, y + 0.5, 150, 7);
-  drawPixelText(ctx, value + (suffix || "/" + max), x + 212, y - 4, color, 11);
+  ctx.strokeRect(barX + 0.5, y + 0.5, barW, 7);
+  drawPixelText(ctx, valueText, valueX, y - 4, color, 11, "right");
 }
 
 function getExploredRatio(game) {
@@ -372,7 +377,7 @@ function drawWarReports(ctx, game) {
 function fitPixelText(ctx, text, maxWidth, size) {
   const value = String(text || "");
   ctx.save();
-  ctx.font = `${size >= 12 ? 600 : 500} ${size}px "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif`;
+  setupCanvasFont(ctx, size, size >= 12 ? 700 : 650, UI_FONT_FAMILY);
   if (ctx.measureText(value).width <= maxWidth) {
     ctx.restore();
     return value;
@@ -422,12 +427,16 @@ function drawNearbyTownActions(ctx, game) {
   const owner = FACTIONS[town.owner];
   const panelX = 364;
   const panelY = 410;
-  drawPanel(ctx, panelX, panelY, 232, 82, town.name);
+  const panelW = 232;
+  drawPanel(ctx, panelX, panelY, panelW, 82, town.name);
   drawPixelText(ctx, owner.name, panelX + 20, panelY + 22, owner.color, 14);
 
   const siegeDisabled = town.owner === "player";
+  const previewDisabled = siegeDisabled || !town.garrison || !town.garrison.length;
+  const previewButton = addButton(game.ui, panelX + panelW - 42, panelY + 12, 26, 24, "兵", "openTownArmyPreview", previewDisabled);
   const enterButton = addButton(game.ui, panelX + 20, panelY + 48, 86, 28, "进城", "enterNearbyTown");
   const siegeButton = addButton(game.ui, panelX + 126, panelY + 48, 86, 28, "攻城", "siegeNearbyTown", siegeDisabled);
+  drawButton(ctx, previewButton, game.input);
   drawButton(ctx, enterButton, game.input);
   drawButton(ctx, siegeButton, game.input);
 }
@@ -437,8 +446,10 @@ function drawNearbyTownActions(ctx, game) {
 export function drawTownUi(ctx, game) {
   const town = game.activeTown;
   clearButtons(game.ui);
+  const view = game.ui.townView || "home";
 
   drawPanel(ctx, 140, 48, 680, 444, town.name);
+  addPanelCloseButton(game.ui, 140, 48, 680, "leaveTown");
 
   const owner = FACTIONS[town.owner];
   const kindText = town.kind === "castle" ? "城池" : town.kind === "tavern" ? "酒馆" : "村庄";
@@ -453,7 +464,50 @@ export function drawTownUi(ctx, game) {
   drawPixelText(ctx, "你的金币 " + formatNumber(game.player.gold), 610, 116, "#ffd56a", 12);
   drawPixelText(ctx, "守军等级 " + Math.floor(town.garrisonLevel || 1), 180, 134, "#b9a77a", 11);
 
-  // 可招募兵种
+  if (view === "recruit") {
+    drawTownRecruitView(ctx, game, town);
+  } else if (view === "trade") {
+    drawTownTradeView(ctx, game, town);
+  } else {
+    drawTownHomeView(ctx, game, town);
+  }
+
+  const baseButtonCount = game.ui.buttons.length;
+  for (let i = 0; i < baseButtonCount; i += 1) {
+    drawButton(ctx, game.ui.buttons[i], game.input);
+  }
+  drawMarketDetailPopup(ctx, game);
+  for (let j = baseButtonCount; j < game.ui.buttons.length; j += 1) {
+    drawButton(ctx, game.ui.buttons[j], game.input);
+  }
+}
+
+function drawTownHomeView(ctx, game, town) {
+  drawPixelText(ctx, "城镇事务", 168, 176, "#ffd56a", 16);
+  drawPixelText(ctx, "选择要办理的事务。招募和交易会进入独立界面。", 168, 206, "#d7c89e", 12);
+
+  const recruitButton = addButton(game.ui, 220, 256, 180, 42, "招兵买马", "townView:recruit");
+  const tradeButton = addButton(game.ui, 560, 256, 180, 42, "交易物品", "townView:trade");
+  drawTownActionTile(ctx, recruitButton, "训练新兵、整补士气、发展城市");
+  drawTownActionTile(ctx, tradeButton, "买入商品装备，卖出背包货物");
+
+  addButton(game.ui, 395, 444, 170, 34, "离开城镇", "leaveTown");
+}
+
+function drawTownActionTile(ctx, button, caption) {
+  const x = button.x;
+  const y = button.y;
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.035)";
+  ctx.fillRect(x - 10, y - 12, button.w + 20, button.h + 56);
+  ctx.strokeStyle = "rgba(143,104,46,0.5)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - 9.5, y - 11.5, button.w + 20, button.h + 56);
+  drawPixelText(ctx, caption, x + button.w / 2, y + 54, "#b9a77a", 11, "center");
+  ctx.restore();
+}
+
+function drawTownRecruitView(ctx, game, town) {
   drawPixelText(ctx, "招募兵种", 168, 170, "#ffd56a", 14);
   const recruitOptions = getRecruitOptions(town);
   recruitOptions.forEach((type, index) => {
@@ -490,11 +544,191 @@ export function drawTownUi(ctx, game) {
   const canManageTown = town.owner === "player";
   addButton(game.ui, 586, 330, 170, 32, "整补士气 " + restCost + "金", "rest", game.player.gold < restCost || moraleFull);
   addButton(game.ui, 586, 380, 170, 32, "发展城市 " + developCost + "金", "developTown", !canManageTown || game.player.gold < developCost);
-  addButton(game.ui, 586, 450, 170, 32, "离开城镇", "leaveTown");
+  addButton(game.ui, 586, 450, 78, 32, "返回", "townView:home");
+  addButton(game.ui, 678, 450, 78, 32, "交易", "townView:trade");
+}
 
-  for (const btn of game.ui.buttons) {
-    drawButton(ctx, btn, game.input);
+function drawTownTradeView(ctx, game, town) {
+  ensurePlayerGoods(game.player);
+  const townListings = getTownSellListings(game, town);
+  const playerListings = getPlayerSellListings(game, town);
+
+  drawPixelText(ctx, "城市出售", 168, 168, "#ffd56a", 14);
+  drawPixelText(ctx, "背包出售", 506, 168, "#ffd56a", 14);
+  drawMarketList(ctx, game, townListings, 168, 190, "buyMarket", true);
+  drawMarketList(ctx, game, playerListings, 506, 190, "sellMarket", false);
+  drawPixelText(ctx, "收购价为当日售价的 80%-90%，不同城市价格不同。", 168, 452, "#b9a77a", 11);
+  addButton(game.ui, 592, 448, 78, 32, "返回", "townView:home");
+  addButton(game.ui, 684, 448, 78, 32, "招募", "townView:recruit");
+}
+
+function drawMarketList(ctx, game, listings, x, y, actionPrefix, buying) {
+  ctx.fillStyle = "rgba(255,255,255,0.03)";
+  ctx.fillRect(x, y - 8, 286, 238);
+  ctx.strokeStyle = "rgba(143,104,46,0.45)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y - 7.5, 286, 238);
+
+  if (!listings.length) {
+    drawPixelText(ctx, buying ? "今日无货" : "背包无可出售物品", x + 143, y + 92, "#8f8060", 12, "center");
+    return;
   }
+
+  listings.slice(0, 7).forEach(function (listing, index) {
+    const rowY = y + index * 32;
+    const item = listing.item;
+    const selected = getSelectedMarketKey(game) === getMarketKey(listing.kind, listing.id);
+    const rowRect = { x, y: rowY - 4, w: 202, h: 28 };
+    const hovered = game.input && rectContains(rowRect, game.input.mouse.x, game.input.mouse.y);
+
+    ctx.fillStyle = selected ? "rgba(255,213,106,0.13)" : hovered ? "rgba(106,70,40,0.36)" : "rgba(0,0,0,0.16)";
+    ctx.fillRect(rowRect.x, rowRect.y, rowRect.w, rowRect.h);
+    ctx.strokeStyle = selected ? "#ffd56a" : hovered ? "#d6a84f" : "rgba(143,104,46,0.32)";
+    ctx.strokeRect(rowRect.x + 0.5, rowRect.y + 0.5, rowRect.w, rowRect.h);
+
+    drawMarketIcon(ctx, item, x + 14, rowY + 10, listing.kind);
+    drawPixelText(ctx, item.name + (listing.count ? " x" + listing.count : ""), x + 30, rowY, getMarketItemColor(listing), 12);
+    drawPixelText(ctx, listing.price + "金", x + 180, rowY, buying ? "#ffd56a" : "#74d17a", 12, "right");
+    const disabled = buying && (game.player.gold < listing.price || (listing.kind === "weapon" && playerOwnsMarketItem(game.player, "weapon", listing.id)));
+    addButton(game.ui, rowRect.x, rowRect.y, rowRect.w, rowRect.h, item.name, "selectMarketItem:" + listing.kind + ":" + listing.id, false, true);
+    addButton(game.ui, x + 214, rowY - 3, 58, 26, buying ? "买入" : "卖出", actionPrefix + ":" + listing.kind + ":" + listing.id, disabled);
+  });
+}
+
+function drawMarketIcon(ctx, item, x, y, kind) {
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.42)";
+  ctx.fillRect(x - 7, y - 7, 14, 14);
+  ctx.strokeStyle = kind === "weapon" ? getWeaponNameColor(item) : item.color || "#d7c89e";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - 6.5, y - 6.5, 14, 14);
+  ctx.fillStyle = kind === "weapon" ? getWeaponNameColor(item) : item.color || "#d7c89e";
+  if (kind === "weapon") {
+    ctx.fillRect(x - 1, y - 7, 3, 12);
+    ctx.fillRect(x - 5, y - 4, 11, 2);
+  } else {
+    ctx.fillRect(x - 4, y - 4, 8, 8);
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.fillRect(x - 2, y - 3, 3, 2);
+  }
+  ctx.restore();
+}
+
+function drawMarketDetailPopup(ctx, game) {
+  const selected = getSelectedMarketItem(game);
+  if (!selected) {
+    return;
+  }
+
+  const x = 306;
+  const y = 144;
+  const w = 348;
+  const h = 248;
+  const item = selected.item;
+  const isWeapon = selected.kind === "weapon";
+
+  ctx.fillStyle = "rgba(0,0,0,0.48)";
+  ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+  addButton(game.ui, 0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight, "关闭物品信息", "closeMarketDetail", false, true);
+  drawPanel(ctx, x, y, w, h, isWeapon ? "装备信息" : "商品信息");
+  addPanelCloseButton(game.ui, x, y, w, "closeMarketDetail");
+
+  const contentX = x + 34;
+  const contentY = y + 44;
+  drawMarketIcon(ctx, item, contentX + 12, contentY + 12, selected.kind);
+  drawPixelText(ctx, item.name, contentX + 36, contentY, getMarketItemColor(selected), 20);
+  drawPixelText(ctx, isWeapon ? getQualityName(item) + " / 装备" : "跑商商品", contentX + 36, contentY + 32, "#b9a77a", 12);
+
+  const boxY = contentY + 62;
+  ctx.fillStyle = "rgba(255,255,255,0.04)";
+  ctx.fillRect(contentX, boxY, w - 68, 92);
+  ctx.strokeStyle = "rgba(143,104,46,0.55)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(contentX + 0.5, boxY + 0.5, w - 68, 92);
+
+  if (isWeapon) {
+    formatEquipmentStats(item).forEach(function (line, index) {
+      const col = index % 2;
+      const row = Math.floor(index / 2);
+      drawPixelText(ctx, line, contentX + 18 + col * 132, boxY + 16 + row * 22, "#f8e9bd", 13);
+    });
+  } else {
+    wrapText(item.description || "可用于城市间贸易。", 17).slice(0, 4).forEach(function (line, index) {
+      drawPixelText(ctx, line, contentX + 18, boxY + 16 + index * 19, "#f8e9bd", 12);
+    });
+  }
+
+  const priceLine = getMarketPriceLine(game, selected);
+  if (priceLine) {
+    drawPixelText(ctx, priceLine, contentX + 18, y + h - 60, "#ffd56a", 13);
+  }
+}
+
+function getSelectedMarketItem(game) {
+  const selected = game.ui && game.ui.selectedMarketItem;
+  if (!selected) {
+    return null;
+  }
+  const item = getMarketItem(selected.kind, selected.id);
+  return item ? { kind: selected.kind, id: selected.id, item } : null;
+}
+
+function getSelectedMarketKey(game) {
+  const selected = game.ui && game.ui.selectedMarketItem;
+  return selected ? getMarketKey(selected.kind, selected.id) : "";
+}
+
+function getMarketKey(kind, id) {
+  return kind + ":" + id;
+}
+
+function getMarketItemColor(listing) {
+  return listing.kind === "weapon" ? getWeaponNameColor(listing.item) : listing.item.color || "#f8e9bd";
+}
+
+function getPlayerGoodsEntries(player) {
+  ensurePlayerGoods(player);
+  return Object.keys(player.goods)
+    .map((id) => ({ item: getMarketItem("good", id), count: player.goods[id] }))
+    .filter((entry) => entry.item && entry.count > 0)
+    .sort((a, b) => a.item.name.localeCompare(b.item.name, "zh-Hans-CN"));
+}
+
+function playerOwnsMarketItem(player, kind, id) {
+  if (kind === "good") {
+    ensurePlayerGoods(player);
+    return (player.goods[id] || 0) > 0;
+  }
+  if (kind === "weapon") {
+    return (player.inventory || []).includes(id);
+  }
+  return false;
+}
+
+function getMarketPriceLine(game, selected) {
+  const town = game.activeTown;
+  if (!town || game.ui.townView !== "trade") {
+    return "";
+  }
+  const townListing = getTownSellListings(game, town).find((entry) => entry.kind === selected.kind && entry.id === selected.id);
+  const sellListing = getPlayerSellListings(game, town).find((entry) => entry.kind === selected.kind && entry.id === selected.id);
+  const parts = [];
+  if (townListing) {
+    parts.push("买入 " + townListing.price + " 金");
+  }
+  if (sellListing) {
+    parts.push("收购 " + sellListing.price + " 金");
+  }
+  return parts.join(" / ");
+}
+
+function wrapText(text, maxChars) {
+  const value = String(text || "");
+  const lines = [];
+  for (let i = 0; i < value.length; i += maxChars) {
+    lines.push(value.slice(i, i + maxChars));
+  }
+  return lines;
 }
 
 // ==================== 属性界面 ====================
@@ -562,6 +796,7 @@ export function drawMenuUi(ctx, game) {
     drawButton(ctx, game.ui.buttons[i], game.input);
   }
   drawEquipmentDetailPopup(ctx, game);
+  drawMarketDetailPopup(ctx, game);
   for (var j = baseButtonCount; j < game.ui.buttons.length; j++) {
     drawButton(ctx, game.ui.buttons[j], game.input);
   }
@@ -617,22 +852,24 @@ function drawPlayerStatGrid(ctx, stats, x, y) {
 function drawEquipmentInventory(ctx, game) {
   const equipped = getEquippedWeaponId(game.player);
   const weaponIds = getInventoryWeaponIds(game.player).filter((id) => id !== equipped);
+  const goods = getPlayerGoodsEntries(game.player);
 
-  drawPixelText(ctx, "装备切换", 456, 286, "#ffd56a", 15);
+  drawPixelText(ctx, "背包", 456, 286, "#ffd56a", 15);
   ctx.fillStyle = "rgba(255,255,255,0.03)";
-  ctx.fillRect(456, 310, 308, 72);
+  ctx.fillRect(456, 310, 308, 138);
 
-  if (!weaponIds.length) {
-    drawPixelText(ctx, "暂无可切换装备", 610, 336, "#8f8060", 12, "center");
+  if (!weaponIds.length && !goods.length) {
+    drawPixelText(ctx, "背包为空", 610, 364, "#8f8060", 12, "center");
     return;
   }
 
+  drawPixelText(ctx, "装备", 470, 316, "#b9a77a", 10);
   weaponIds.slice(0, 6).forEach(function (id, index) {
     const weapon = WEAPONS[id];
     const col = index % 3;
     const row = Math.floor(index / 3);
     const x = 470 + col * 94;
-    const y = 318 + row * 30;
+    const y = 332 + row * 28;
     const rect = { x, y, w: 84, h: 26 };
     const selected = getSelectedEquipmentId(game) === id;
     const hovered = game.input && rectContains(rect, game.input.mouse.x, game.input.mouse.y);
@@ -645,6 +882,27 @@ function drawEquipmentInventory(ctx, game) {
     ctx.strokeRect(x + 0.5, drawY + 0.5, 84, 26);
     drawPixelText(ctx, weapon.name, x + 6, drawY + 7, getWeaponNameColor(weapon), 10);
     addButton(game.ui, x, y, 84, 26, "查看装备", "selectEquipment:" + id, false, true);
+  });
+
+  drawPixelText(ctx, "商品", 470, 392, "#b9a77a", 10);
+  goods.slice(0, 6).forEach(function (entry, index) {
+    const item = entry.item;
+    const col = index % 3;
+    const row = Math.floor(index / 3);
+    const x = 470 + col * 94;
+    const y = 408 + row * 28;
+    const rect = { x, y, w: 84, h: 24 };
+    const selected = getSelectedMarketKey(game) === getMarketKey("good", item.id);
+    const hovered = game.input && rectContains(rect, game.input.mouse.x, game.input.mouse.y);
+    const pressed = hovered && game.input.mouse.down;
+    const drawY = y + (pressed ? 1 : 0);
+    ctx.fillStyle = selected ? "rgba(255,213,106,0.14)" : hovered ? "rgba(106,70,40,0.72)" : "rgba(0,0,0,0.18)";
+    ctx.fillRect(x, drawY, 84, 24);
+    ctx.strokeStyle = selected ? "#ffd56a" : hovered ? "#d6a84f" : "#5f3f17";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, drawY + 0.5, 84, 24);
+    drawPixelText(ctx, item.name + " x" + entry.count, x + 6, drawY + 6, item.color || "#f8e9bd", 10);
+    addButton(game.ui, x, y, 84, 24, "查看商品", "selectMarketItem:good:" + item.id, false, true);
   });
 }
 
@@ -705,40 +963,275 @@ export function drawArmyUi(ctx, game) {
   drawPixelText(ctx, "兵力 " + getArmySize(game.player.army) + "/" + getMaxArmySize(game.player), 344, 84, "#d9f0ff", 14);
   drawPixelText(ctx, "战力 " + Math.round(getArmyPower(game.player.army)), 484, 84, "#f8e9bd", 14);
 
-  drawPixelText(ctx, "部队", 214, 122, "#b9a77a", 11);
-  drawPixelText(ctx, "当前属性", 380, 122, "#b9a77a", 11);
-  drawPixelText(ctx, "下级属性", 540, 122, "#b9a77a", 11);
+  drawPixelText(ctx, "部队编制", 214, 122, "#b9a77a", 11);
 
   if (!game.player.army.length) {
     drawPixelText(ctx, "暂无部队", 480, 236, "#b9a77a", 16, "center");
   }
 
-  game.player.army.forEach(function (unit, index) {
-    const y = 146 + index * 58;
-    const type = getTroopLevelStats(unit.type, unit.level);
-    const maxLevel = getMaxTroopLevel(unit.type);
-    const next = unit.level < maxLevel ? getTroopLevelStats(unit.type, unit.level + 1) : null;
-    const cost = getTroopUpgradeCost(unit);
+  const soldiers = getArmySoldiers(game.player.army);
+  const armyPage = getArmyPage(game.ui, "armyPage", soldiers.length, ARMY_GRID_LAYOUT);
+  const visibleSoldiers = getArmyPageSoldiers(soldiers, armyPage, ARMY_GRID_LAYOUT);
+  const selectedSoldier = getSelectedArmySoldier(game, soldiers);
+  drawArmySoldierGrid(ctx, game, visibleSoldiers, selectedSoldier, ARMY_GRID_LAYOUT);
+  drawArmyPager(ctx, game, soldiers.length, armyPage, ARMY_GRID_LAYOUT, "armyPage");
 
-    ctx.fillStyle = "rgba(255,255,255,0.03)";
-    ctx.fillRect(206, y - 8, 540, 48);
-    drawTroopPortrait(ctx, unit.type, 228, y + 12, type.color, 0.74);
-    drawPixelText(ctx, type.name + " Lv." + unit.level, 252, y - 2, type.color, 14);
-    drawPixelText(ctx, "x" + unit.count + " 士气" + unit.morale, 252, y + 18, "#d7c89e", 10);
-    drawPixelText(ctx, formatTroopStats(type), 380, y + 2, "#f8e9bd", 10);
-    drawPixelText(ctx, next ? formatTroopStats(next) : "已满级", 540, y + 2, next ? "#d9f0ff" : "#b9a77a", 10);
+  const baseButtonCount = game.ui.buttons.length;
+  for (var i = 0; i < baseButtonCount; i++) {
+    drawButton(ctx, game.ui.buttons[i], game.input);
+  }
 
-    const disabled = !next || game.player.gold < cost;
-    addButton(game.ui, 646, y + 4, 86, 28, next ? "升级 " + cost : "满级", "upgradeTroop:" + index, disabled);
+  if (selectedSoldier) {
+    drawArmySoldierCard(ctx, game, selectedSoldier, {
+      title: "士兵信息",
+      closeAction: "closeArmySoldier"
+    });
+    for (var j = baseButtonCount; j < game.ui.buttons.length; j++) {
+      drawButton(ctx, game.ui.buttons[j], game.input);
+    }
+  }
+}
+
+export function drawArmyPreviewOverlay(ctx, game) {
+  const preview = game.ui && game.ui.enemyArmyPreview;
+  if (!preview) {
+    return;
+  }
+
+  const army = Array.isArray(preview.army) ? preview.army : [];
+  const soldiers = getArmySoldiers(army);
+  const armyPage = getArmyPage(game.ui, "enemyArmyPage", soldiers.length, ARMY_GRID_LAYOUT);
+  const visibleSoldiers = getArmyPageSoldiers(soldiers, armyPage, ARMY_GRID_LAYOUT);
+  const panelX = 176;
+  const panelY = 48;
+  const panelW = 608;
+  const firstButtonIndex = game.ui.buttons.length;
+
+  ctx.fillStyle = "rgba(0,0,0,0.58)";
+  ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+  addButton(game.ui, 0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight, "关闭敌军预览", "closeEnemyArmyPreview", false, true);
+
+  drawPanel(ctx, panelX, panelY, panelW, 444, preview.title || "敌军预览");
+  addPanelCloseButton(game.ui, panelX, panelY, panelW, "closeEnemyArmyPreview");
+  drawPixelText(ctx, preview.subtitle || "敌军编制", 214, 84, "#ff8a74", 14);
+  drawPixelText(ctx, "兵力 " + getArmySize(army), 344, 84, "#d9f0ff", 14);
+  drawPixelText(ctx, "战力 " + Math.round(getArmyPower(army)), 484, 84, "#f8e9bd", 14);
+  drawPixelText(ctx, "敌军编制", 214, 122, "#b9a77a", 11);
+
+  if (!army.length) {
+    drawPixelText(ctx, "暂无部队", 480, 236, "#b9a77a", 16, "center");
+  }
+
+  drawArmySoldierGrid(ctx, game, visibleSoldiers, null, {
+    ...ARMY_GRID_LAYOUT,
+    clickable: false,
+    strokeColor: "#7a3e38",
+    hoverColor: "#7a3e38"
   });
+  drawArmyPager(ctx, game, soldiers.length, armyPage, ARMY_GRID_LAYOUT, "enemyArmyPage");
 
-  for (var i = 0; i < game.ui.buttons.length; i++) {
+  for (var i = firstButtonIndex; i < game.ui.buttons.length; i++) {
     drawButton(ctx, game.ui.buttons[i], game.input);
   }
 }
 
-function formatTroopStats(stats) {
-  return "攻" + stats.attack + " 防" + stats.defense + " 血" + stats.hp + " 速" + stats.speed;
+function getArmySoldiers(army) {
+  const soldiers = [];
+  army.forEach(function (unit, stackIndex) {
+    for (let i = 0; i < unit.count; i += 1) {
+      soldiers.push({ unit, stackIndex, ordinal: i });
+    }
+  });
+  return soldiers;
+}
+
+function getSelectedArmySoldier(game, soldiers) {
+  const selectedKey = game.ui.selectedArmySoldierKey;
+  const selected = selectedKey
+    ? soldiers.find((soldier) => getArmySoldierKey(soldier) === selectedKey)
+    : null;
+  if (!selected) {
+    game.ui.selectedArmySoldierKey = null;
+  }
+  return selected || null;
+}
+
+function getArmySoldierKey(soldier) {
+  return soldier.stackIndex + ":" + soldier.ordinal + ":" + soldier.unit.type + ":" + soldier.unit.level;
+}
+
+function setSelectedArmySoldier(game, typeId, level) {
+  const soldiers = getArmySoldiers(game.player.army);
+  const soldier = soldiers.find((item) => item.unit.type === typeId && item.unit.level === level) || soldiers[0];
+  game.ui.selectedArmySoldierKey = soldier ? getArmySoldierKey(soldier) : null;
+  if (soldier) {
+    game.ui.armyPage = Math.floor(soldiers.indexOf(soldier) / getArmyPageSize(ARMY_GRID_LAYOUT));
+  }
+}
+
+function drawArmySoldierGrid(ctx, game, soldiers, selectedSoldier, options = {}) {
+  const startX = options.x || 214;
+  const startY = options.y || 148;
+  const cols = options.cols || 10;
+  const rows = options.rows || 7;
+  const cell = options.cell || 42;
+  const gap = options.gap || 7;
+  const maxVisible = cols * rows;
+  const clickable = options.clickable !== false;
+  const actionPrefix = options.actionPrefix || "selectArmySoldier:";
+  const selectedKey = selectedSoldier ? getArmySoldierKey(selectedSoldier) : "";
+
+  soldiers.slice(0, maxVisible).forEach(function (soldier, index) {
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    const x = startX + col * (cell + gap);
+    const y = startY + row * (cell + gap);
+    const rect = { x, y, w: cell, h: cell };
+    const hovered = clickable && game.input && rectContains(rect, game.input.mouse.x, game.input.mouse.y);
+    const selected = selectedKey === getArmySoldierKey(soldier);
+    const stats = getTroopLevelStats(soldier.unit.type, soldier.unit.level);
+
+    ctx.fillStyle = selected ? "rgba(255,213,106,0.16)" : hovered ? "rgba(125,243,255,0.12)" : "rgba(255,255,255,0.035)";
+    ctx.fillRect(x, y, cell, cell);
+    ctx.strokeStyle = selected ? "#ffd56a" : hovered ? (options.hoverColor || "#7df3ff") : (options.strokeColor || "#5f3f17");
+    ctx.lineWidth = selected ? 2 : 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, cell, cell);
+    drawTroopPortrait(ctx, soldier.unit.type, x + cell / 2, y + 21, stats.color, 0.72);
+    drawArmyLevelBadge(ctx, x + cell - 22, y + cell - 15, soldier.unit.level);
+    if (clickable) {
+      addButton(game.ui, x, y, cell, cell, stats.name, actionPrefix + getArmySoldierKey(soldier), false, true);
+    }
+  });
+}
+
+function getArmyPageSize(layout) {
+  return layout.cols * layout.rows;
+}
+
+function getArmyPage(ui, key, total, layout) {
+  const pageSize = getArmyPageSize(layout);
+  const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+  const current = Math.max(0, Math.min(maxPage, Math.floor(Number(ui[key] || 0))));
+  ui[key] = current;
+  return current;
+}
+
+function getArmyPageSoldiers(soldiers, page, layout) {
+  const pageSize = getArmyPageSize(layout);
+  const start = page * pageSize;
+  return soldiers.slice(start, start + pageSize);
+}
+
+function stepArmyPage(ui, key, total, direction) {
+  const pageSize = getArmyPageSize(ARMY_GRID_LAYOUT);
+  const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+  const current = Math.max(0, Math.min(maxPage, Math.floor(Number(ui[key] || 0))));
+  ui[key] = Math.max(0, Math.min(maxPage, current + direction));
+}
+
+function drawArmyPager(ctx, game, total, page, layout, key) {
+  const pageSize = getArmyPageSize(layout);
+  const pageCount = Math.ceil(total / pageSize);
+  if (pageCount <= 1) {
+    return;
+  }
+  const gridW = layout.cols * layout.cell + (layout.cols - 1) * layout.gap;
+  const x = layout.x + gridW - 106;
+  const y = layout.y - 34;
+  addButton(game.ui, x, y, 26, 22, "<", key + ":prev", page <= 0);
+  drawPixelText(ctx, (page + 1) + "/" + pageCount, x + 54, y + 4, "#d9f0ff", 11, "center");
+  addButton(game.ui, x + 80, y, 26, 22, ">", key + ":next", page >= pageCount - 1);
+}
+
+function drawArmyLevelBadge(ctx, x, y, level) {
+  ctx.save();
+  ctx.fillStyle = "rgba(4, 8, 10, 0.86)";
+  ctx.fillRect(Math.round(x), Math.round(y), 21, 12);
+  ctx.strokeStyle = "rgba(255,213,106,0.72)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, 21, 12);
+  drawPixelText(ctx, "Lv." + level, x + 2, y + 1, "#ffd56a", 8);
+  ctx.restore();
+}
+
+function drawArmySoldierCard(ctx, game, soldier, options = {}) {
+  const unit = soldier.unit;
+  const stats = getTroopLevelStats(unit.type, unit.level);
+  const readonly = Boolean(options.readonly);
+  const next = !readonly && unit.level < getMaxTroopLevel(unit.type) ? getTroopLevelStats(unit.type, unit.level + 1) : null;
+  const cost = readonly ? 0 : getSingleTroopUpgradeCost(unit);
+  const cardX = 306;
+  const cardY = 86;
+  const cardW = 348;
+  const cardH = 368;
+  const contentX = cardX + 34;
+  const contentY = cardY + 46;
+  const statsBoxY = contentY + 86;
+  const upgradeButton = { x: cardX + 104, y: cardY + cardH - 54, w: 140, h: 34 };
+  const upgradeHovered = !readonly && game.input && rectContains(upgradeButton, game.input.mouse.x, game.input.mouse.y);
+  const closeAction = options.closeAction || "closeArmySoldier";
+
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.48)";
+  ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+  addButton(game.ui, 0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight, "关闭士兵信息", closeAction, false, true);
+
+  drawPanel(ctx, cardX, cardY, cardW, cardH, options.title || "士兵信息");
+  addPanelCloseButton(game.ui, cardX, cardY, cardW, closeAction);
+
+  ctx.fillStyle = "rgba(255,255,255,0.04)";
+  ctx.fillRect(contentX, statsBoxY, cardW - 68, 154);
+  ctx.strokeStyle = "rgba(143,104,46,0.55)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(contentX + 0.5, statsBoxY + 0.5, cardW - 68, 154);
+
+  drawTroopPortrait(ctx, unit.type, contentX + 34, contentY + 36, stats.color, 1.15);
+  drawPixelText(ctx, stats.name, contentX + 82, contentY + 8, stats.color, 21);
+  drawPixelText(ctx, stats.role, contentX + 82, contentY + 42, "#b9a77a", 12);
+  drawPixelText(ctx, "Lv." + unit.level + "  士气 " + Math.round(unit.morale || 0), contentX + 82, contentY + 62, "#f8e9bd", 13);
+
+  const rows = [
+    ["生命", stats.hp, next ? next.hp : null],
+    ["攻击", stats.attack, next ? next.attack : null],
+    ["防御", stats.defense, next ? next.defense : null],
+    ["射程", stats.range, next ? next.range : null],
+    ["速度", stats.speed, next ? next.speed : null],
+    ["暴击", Math.round(stats.crit * 100) + "%", next ? Math.round(next.crit * 100) + "%" : null],
+    ["维护", stats.upkeep, next ? next.upkeep : null]
+  ];
+  rows.forEach(function (row, index) {
+    drawArmyStatPreview(ctx, row[0], row[1], row[2], contentX + 24, statsBoxY + 14 + index * 19, upgradeHovered && Boolean(next));
+  });
+
+  if (!readonly) {
+    const disabled = !next || game.player.gold < cost;
+    addButton(game.ui, upgradeButton.x, upgradeButton.y, upgradeButton.w, upgradeButton.h, next ? "升级 " + cost + "金" : "满级", "upgradeSingleTroop:" + soldier.stackIndex, disabled);
+  }
+  ctx.restore();
+}
+
+function drawArmyStatPreview(ctx, label, value, nextValue, x, y, showDelta) {
+  drawPixelText(ctx, label, x, y, "#b9a77a", 10);
+  drawPixelText(ctx, String(value), x + 64, y, "#f8e9bd", 10);
+  if (!showDelta || nextValue === null || nextValue === undefined) {
+    return;
+  }
+  const current = parseStatValue(value);
+  const next = parseStatValue(nextValue);
+  const delta = next - current;
+  if (Math.abs(delta) < 0.001) {
+    return;
+  }
+  const color = delta > 0 ? "#58ff8a" : "#ff7568";
+  const sign = delta > 0 ? "+" : "";
+  const text = typeof nextValue === "string" && String(nextValue).includes("%")
+    ? sign + Math.round(delta) + "%"
+    : sign + Math.round(delta);
+  drawPixelText(ctx, text, x + 130, y, color, 10);
+}
+
+function parseStatValue(value) {
+  return Number(String(value).replace("%", "")) || 0;
 }
 
 function drawTroopPortrait(ctx, troopType, x, y, color, scale = 1) {
@@ -822,6 +1315,7 @@ export function drawSettingsUi(ctx, game) {
   drawPixelText(ctx, "存档", 336, 206, "#ffd56a", 15);
   addButton(game.ui, 336, 240, 132, 34, "保存游戏", "save");
   addButton(game.ui, 492, 240, 132, 34, "读取存档", "load");
+  addButton(game.ui, 336, 284, 132, 34, document.fullscreenElement ? "退出全屏" : "全屏", "toggleFullscreen");
   drawPixelText(ctx, "兑换码", 336, 292, "#ffd56a", 15);
   addButton(game.ui, 492, 284, 132, 34, "输入兑换码", "openPrivilege");
   addButton(game.ui, 414, 342, 132, 36, "返回主界面", "backToStart");
@@ -905,6 +1399,7 @@ export function handleUiAction(game, action) {
     return true;
   }
   if (action === "closeArmy") {
+    game.ui.selectedArmySoldierKey = null;
     game.state = "world";
     return true;
   }
@@ -915,6 +1410,17 @@ export function handleUiAction(game, action) {
   }
   if (action === "openPrivilege") {
     game.privilege = { open: true, input: "", busy: false };
+    return true;
+  }
+  if (action === "toggleFullscreen") {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      var target = document.querySelector(".game-shell") || document.documentElement;
+      if (target.requestFullscreen) {
+        target.requestFullscreen();
+      }
+    }
     return true;
   }
   if (action === "closePrivilege") {
@@ -929,6 +1435,9 @@ export function handleUiAction(game, action) {
     return true;
   }
   if (action === "backToStart") {
+    if (game.state !== "start") {
+      game.__requestSaveBeforeStart = true;
+    }
     game.state = "start";
     game.previousState = null;
     game.activeTown = null;
@@ -938,6 +1447,9 @@ export function handleUiAction(game, action) {
     game.battle = null;
     game.pendingEncounter = null;
     game.encounter = null;
+    resetTownUi(game);
+    game.ui.selectedArmySoldierKey = null;
+    game.ui.enemyArmyPreview = null;
     if (game.player) {
       game.player.target = null;
     }
@@ -945,6 +1457,11 @@ export function handleUiAction(game, action) {
   }
   if (action === "leaveTown") {
     leaveTown(game);
+    return true;
+  }
+  if (action.indexOf("townView:") === 0) {
+    game.ui.townView = action.split(":")[1] || "home";
+    game.ui.selectedMarketItem = null;
     return true;
   }
   if (action === "rest") {
@@ -962,7 +1479,7 @@ export function handleUiAction(game, action) {
   }
   if (action.indexOf("upgradeTroop:") === 0) {
     var stackIndex = Number(action.split(":")[1]);
-    var result = upgradeArmyStack(game.player, stackIndex);
+    var result = upgradeSingleTroop(game.player, stackIndex);
     game.notice = {
       title: result.ok ? "升级完成" : "无法升级",
       lines: [result.message],
@@ -970,10 +1487,117 @@ export function handleUiAction(game, action) {
       duration: 1.8,
       kind: "gold"
     };
+    if (result.ok && result.upgraded) {
+      setSelectedArmySoldier(game, result.upgraded.type, result.upgraded.level);
+    }
+    return true;
+  }
+  if (action.indexOf("upgradeSingleTroop:") === 0) {
+    var singleStackIndex = Number(action.split(":")[1]);
+    var singleResult = upgradeSingleTroop(game.player, singleStackIndex);
+    game.notice = {
+      title: singleResult.ok ? "升级完成" : "无法升级",
+      lines: [singleResult.message],
+      timer: 1.8,
+      duration: 1.8,
+      kind: "gold"
+    };
+    if (singleResult.ok && singleResult.upgraded) {
+      setSelectedArmySoldier(game, singleResult.upgraded.type, singleResult.upgraded.level);
+    }
+    return true;
+  }
+  if (action.indexOf("selectArmySoldier:") === 0) {
+    game.ui.selectedArmySoldierKey = action.slice("selectArmySoldier:".length);
+    return true;
+  }
+  if (action.indexOf("armyPage:") === 0) {
+    stepArmyPage(game.ui, "armyPage", getArmySoldiers(game.player.army).length, action.endsWith(":next") ? 1 : -1);
+    game.ui.selectedArmySoldierKey = null;
+    return true;
+  }
+  if (action === "closeArmySoldier") {
+    game.ui.selectedArmySoldierKey = null;
+    return true;
+  }
+  if (action === "openTownArmyPreview") {
+    if (game.nearTown && game.nearTown.owner !== "player") {
+      game.ui.enemyArmyPreview = {
+        source: "town",
+        title: game.nearTown.name + " 守军",
+        subtitle: "敌方城池守军",
+        army: game.nearTown.garrison || []
+      };
+      game.ui.enemyArmyPage = 0;
+    }
+    return true;
+  }
+  if (action === "openEncounterArmyPreview") {
+    if (game.encounter && game.encounter.enemy) {
+      var enemy = game.encounter.enemy;
+      game.ui.enemyArmyPreview = {
+        source: "encounter",
+        title: (enemy.name || "敌军") + " 编制",
+        subtitle: "遭遇敌军",
+        army: enemy.army || enemy.garrison || []
+      };
+      game.ui.enemyArmyPage = 0;
+    }
+    return true;
+  }
+  if (action.indexOf("enemyArmyPage:") === 0) {
+    const preview = game.ui.enemyArmyPreview;
+    const army = preview && Array.isArray(preview.army) ? preview.army : [];
+    stepArmyPage(game.ui, "enemyArmyPage", getArmySoldiers(army).length, action.endsWith(":next") ? 1 : -1);
+    return true;
+  }
+  if (action === "closeEnemyArmyPreview") {
+    game.ui.enemyArmyPreview = null;
+    game.ui.enemyArmyPage = 0;
+    return true;
+  }
+  if (action.indexOf("selectMarketItem:") === 0) {
+    var marketParts = action.split(":");
+    game.ui.selectedMarketItem = { kind: marketParts[1], id: marketParts[2] };
+    setSelectedEquipment(game, null);
+    return true;
+  }
+  if (action.indexOf("buyMarket:") === 0) {
+    var buyParts = action.split(":");
+    var buyResult = buyMarketItem(game, game.activeTown, buyParts[1], buyParts[2]);
+    game.message = buyResult.message;
+    game.notice = {
+      title: buyResult.ok ? "交易完成" : "交易失败",
+      lines: [buyResult.message],
+      timer: 1.6,
+      duration: 1.6,
+      kind: "gold"
+    };
+    return true;
+  }
+  if (action.indexOf("sellMarket:") === 0) {
+    var sellParts = action.split(":");
+    var sellResult = sellMarketItem(game, game.activeTown, sellParts[1], sellParts[2]);
+    game.message = sellResult.message;
+    game.notice = {
+      title: sellResult.ok ? "交易完成" : "交易失败",
+      lines: [sellResult.message],
+      timer: 1.6,
+      duration: 1.6,
+      kind: "gold"
+    };
+    if (!sellResult.ok || !playerOwnsMarketItem(game.player, sellParts[1], sellParts[2])) {
+      game.ui.selectedMarketItem = null;
+    }
+    return true;
+  }
+  if (action === "closeMarketDetail") {
+    game.ui.selectedMarketItem = null;
     return true;
   }
   if (action.indexOf("selectEquipment:") === 0) {
     selectEquipment(game, action.split(":")[1]);
+    game.ui.selectedMarketItem = null;
     return true;
   }
   if (action === "closeEquipmentDetail") {

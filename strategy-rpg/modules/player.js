@@ -1,4 +1,5 @@
 import { PLAYER_TEMPLATE } from "./config.js";
+import { ensurePlayerGoods } from "./market.js";
 import { createArmy, getMaxArmySize, payUpkeep } from "./troop.js";
 import { deepClone } from "./utils.js";
 
@@ -10,6 +11,7 @@ export function createPlayer() {
   player.ownedTowns = [];
   player.ownedResources = [];
   player.inventory = [];
+  ensurePlayerGoods(player);
   player.day = 1;
   player.unified = false;
   return player;

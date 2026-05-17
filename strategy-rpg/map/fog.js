@@ -27,6 +27,35 @@ export function createFogOfWar(map) {
   };
 }
 
+export function serializeFogOfWar(fog) {
+  if (!fog || !fog.cells) {
+    return null;
+  }
+  return {
+    cols: fog.cols,
+    rows: fog.rows,
+    cells: Array.from(fog.cells)
+  };
+}
+
+export function restoreFogOfWar(map, savedFog, player) {
+  const fog = createFogOfWar(map);
+  if (!savedFog || savedFog.cols !== map.cols || savedFog.rows !== map.rows || !Array.isArray(savedFog.cells)) {
+    updateFogOfWar(fog, map, player, true);
+    return fog;
+  }
+
+  const count = Math.min(fog.cells.length, savedFog.cells.length);
+  for (let i = 0; i < count; i += 1) {
+    const state = Number(savedFog.cells[i]) || FOG_UNKNOWN;
+    fog.cells[i] = state === FOG_VISIBLE ? FOG_EXPLORED : Math.max(FOG_UNKNOWN, Math.min(FOG_EXPLORED, state));
+  }
+  fog.exploredCount = countDiscoveredCells(fog);
+  updateFogCanvasRegion(fog, 0, 0, map.cols - 1, map.rows - 1);
+  updateFogOfWar(fog, map, player, true);
+  return fog;
+}
+
 export function resetFogOfWar(game) {
   game.fog = createFogOfWar(game.map);
   updateFogOfWar(game.fog, game.map, game.player, true);

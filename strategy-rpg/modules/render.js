@@ -2,11 +2,12 @@ import { CONFIG, FACTIONS, MINIMAP_FACTION_COLORS, MINIMAP_ICON_COLORS, MINIMAP_
 import { getBattleTitle } from "./battle.js";
 import { getTerrainById } from "./map.js";
 import { hasSave } from "./save.js";
-import { addButton, drawArmyUi, drawButton, drawHud, drawMenuUi, drawSettingsUi, drawTownUi } from "./ui.js";
+import { addButton, drawArmyPreviewOverlay, drawArmyUi, drawButton, drawHud, drawMenuUi, drawSettingsUi, drawTownUi } from "./ui.js";
 import { drawBar, drawPanel, drawPixelText, clamp } from "./utils.js";
 import { drawMiniMap as drawMiniMapOverlay } from "../map/minimap.js";
 import { renderWorldScene } from "../map/mapRenderer.js";
 import { drawWorldMap } from "../map/worldmap.js";
+import { prepareFrame } from "./display.js";
 
 // 渲染模块：使用像素精灵绘制地图、单位和战斗场景，保持 Canvas 结构清晰。
 // 所有精灵均为程序化像素绘制，无外部资源依赖。
@@ -18,16 +19,21 @@ const miniMapTerrainCache = {
   canvas: null
 };
 
-export function createRenderer(canvas) {
+export function createRenderer(canvas, display) {
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
-  return { canvas, ctx };
+  return { canvas, ctx, display };
 }
 
 export function renderGame(renderer, game) {
   const ctx = renderer.ctx;
-  ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+  if (renderer.display) {
+    prepareFrame(ctx, renderer.display);
+  } else {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+  }
 
   if (game.state === "start") {
     renderStartScreen(ctx, game);
@@ -58,6 +64,7 @@ export function renderGame(renderer, game) {
   if (game.state === "encounter") {
     drawEncounterDialog(ctx, game);
   }
+  drawArmyPreviewOverlay(ctx, game);
   if (game.player.unified) {
     drawVictoryBanner(ctx);
   }
@@ -1264,14 +1271,20 @@ function drawEncounterDialog(ctx, game) {
 
   ctx.fillStyle = "rgba(0,0,0,0.42)";
   ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
-  drawPanel(ctx, 314, 174, 332, 188, "遭遇敌军");
+  const panelX = 314;
+  const panelY = 174;
+  const panelW = 332;
+  drawPanel(ctx, panelX, panelY, panelW, 188, "遭遇敌军");
 
   drawPixelText(ctx, enemy.name || "敌军", 480, 204, "#ff8a74", 22, "center");
   drawPixelText(ctx, "敌军挡住了去路，是否开战？", 480, 242, "#f8e9bd", 14, "center");
   drawPixelText(ctx, "逃跑会后撤一段距离，不会损失金币。", 480, 268, "#b9a77a", 12, "center");
 
+  const enemyArmy = enemy.army || enemy.garrison || [];
+  const previewButton = addButton(game.ui, panelX + panelW - 42, panelY + 12, 26, 24, "兵", "openEncounterArmyPreview", !enemyArmy.length);
   const fightButton = addButton(game.ui, 360, 310, 104, 34, "战斗", "acceptEncounter");
   const fleeButton = addButton(game.ui, 496, 310, 104, 34, "逃跑", "fleeEncounter");
+  drawButton(ctx, previewButton, game.input);
   drawButton(ctx, fightButton, game.input);
   drawButton(ctx, fleeButton, game.input);
 }

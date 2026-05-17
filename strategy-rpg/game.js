@@ -9,11 +9,12 @@ import { addWarReport } from "./modules/reports.js";
 import { createRenderer, renderGame } from "./modules/render.js";
 import { applySaveToGame, autoSaveIfNeeded, createFreshGameData, hasSave, loadGameData, saveGame } from "./modules/save.js";
 import { getArmyPower } from "./modules/troop.js";
-import { enterTown } from "./modules/town.js";
+import { enterTown, resetTownUi } from "./modules/town.js";
 import { distanceXY, moveToward } from "./modules/utils.js";
 import { getClickedButton, handleUiAction } from "./modules/ui.js";
 import { focusCameraOn, releaseCamera } from "./map/camera.js";
-import { createFogOfWar, resetFogOfWar, updateFogOfWar } from "./map/fog.js";
+import { createDisplay, updateDisplay } from "./modules/display.js";
+import { createFogOfWar, resetFogOfWar, restoreFogOfWar, updateFogOfWar } from "./map/fog.js";
 import { createMiniMapState, handleMiniMapClick, updateMiniMapHover } from "./map/minimap.js";
 import { assignUnitPath, buildRoadPreferredPath, clearUnitPath } from "./map/pathfinding.js";
 import { closeWorldMapToPlayer, createWorldMapState, handleWorldMapClick, handleWorldMapDoubleClick, updateWorldMap } from "./map/worldmap.js";
@@ -26,8 +27,9 @@ const PRIVILEGE_FILE = "./privilege.txt";
 const PRIVILEGE_USED_KEY = CONFIG.saveKey + "-privilege-used";
 
 var canvas = document.querySelector("#gameCanvas");
-var renderer = createRenderer(canvas);
-var input = createInput(canvas);
+var display = createDisplay(canvas);
+var renderer = createRenderer(canvas, display);
+var input = createInput(canvas, display);
 var camera = createCamera();
 
 var fresh = createFreshGameData();
@@ -74,10 +76,17 @@ focusCameraOn(game.camera, game.player.x, game.player.y, game.map, true);
 
 refreshOwnedTowns(game.player, game.map.towns);
 requestAnimationFrame(loop);
+window.addEventListener("resize", handleDisplayResize);
+document.addEventListener("fullscreenchange", handleDisplayResize);
+
+function handleDisplayResize() {
+  updateDisplay(display);
+}
 
 // ==================== 主循环 ====================
 
 function loop(now) {
+  refreshDisplayIfNeeded();
   var targetFrameMs = 1000 / getTargetFps();
   if (now - game.lastFrameTime >= targetFrameMs) {
     var dt = Math.min(0.08, (now - game.lastTime) / 1000);
@@ -89,6 +98,13 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
+function refreshDisplayIfNeeded() {
+  var nextDpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  if (Math.abs(nextDpr - display.dpr) > 0.01) {
+    updateDisplay(display);
+  }
+}
+
 function getTargetFps() {
   return Math.max(10, Math.min(120, game.settings.maxFps || CONFIG.targetFps.world));
 }
@@ -97,6 +113,7 @@ function updateGame(dt) {
   updateNotice(dt);
   handlePrivilegeInput();
   handleGlobalShortcuts();
+  saveBeforeStartIfRequested();
 
   var click = consumeClick(input);
   var doubleClick = consumeDoubleClick(input);
@@ -132,6 +149,14 @@ function updateGame(dt) {
   autoSaveIfNeeded(game, dt);
 }
 
+function saveBeforeStartIfRequested() {
+  if (!game.__requestSaveBeforeStart) {
+    return;
+  }
+  game.__requestSaveBeforeStart = false;
+  saveGame(game);
+}
+
 // ==================== 快捷键 ====================
 
 function handleGlobalShortcuts() {
@@ -142,6 +167,12 @@ function handleGlobalShortcuts() {
   if (consumeKey(input, "escape")) {
     if (game.privilege && game.privilege.open) {
       game.privilege.open = false;
+    } else if (game.ui && game.ui.selectedMarketItem) {
+      game.ui.selectedMarketItem = null;
+    } else if (game.ui && game.ui.enemyArmyPreview) {
+      game.ui.enemyArmyPreview = null;
+    } else if (game.ui && game.ui.selectedArmySoldierKey) {
+      game.ui.selectedArmySoldierKey = null;
     } else if (game.mapUi && game.mapUi.worldMap && game.mapUi.worldMap.open) {
       closeWorldMapToPlayer(game);
       game.message = "关闭世界地图";
@@ -160,6 +191,7 @@ function handleGlobalShortcuts() {
     } else if (game.state === "town") {
       game.state = "world";
       game.activeTown = null;
+      resetTownUi(game);
       game.message = "离开城镇";
     } else if (game.state === "encounter") {
       fleeEncounter();
@@ -204,10 +236,16 @@ function handleUiClick(click) {
     return true;
   }
   if (button.action === "acceptEncounter") {
+    if (game.ui) {
+      game.ui.enemyArmyPreview = null;
+    }
     acceptEncounter();
     return true;
   }
   if (button.action === "fleeEncounter") {
+    if (game.ui) {
+      game.ui.enemyArmyPreview = null;
+    }
     fleeEncounter();
     return true;
   }
@@ -222,6 +260,9 @@ function handleUiClick(click) {
       if (game.nearTown.owner === "player") {
         setNotice("无需攻城", [game.nearTown.name + " 已是我方城池"], 1.8, "gold");
       } else {
+        if (game.ui) {
+          game.ui.enemyArmyPreview = null;
+        }
         clearUnitPath(game.player);
         addWarReport(game, "我军正在攻击 " + game.nearTown.name, "good");
         startBattle(game, { type: "siege", enemy: game.nearTown, town: game.nearTown });
@@ -429,6 +470,9 @@ function handleWorldInteractions() {
         game.message = nearTown.name + " 已是我方城池，无需攻城";
         setNotice("无需攻城", [nearTown.name + " 已是我方城池"], 1.8, "gold");
       } else {
+        if (game.ui) {
+          game.ui.enemyArmyPreview = null;
+        }
         clearUnitPath(game.player);
         addWarReport(game, "我军正在攻击 " + nearTown.name, "good");
         startBattle(game, { type: "siege", enemy: nearTown, town: nearTown });
@@ -513,11 +557,17 @@ function openEncounter(enemy) {
 
 function acceptEncounter() {
   if (!game.encounter || !game.encounter.enemy) {
+    if (game.ui) {
+      game.ui.enemyArmyPreview = null;
+    }
     game.state = "world";
     return;
   }
   var enemy = game.encounter.enemy;
   game.encounter = null;
+  if (game.ui) {
+    game.ui.enemyArmyPreview = null;
+  }
   clearUnitPath(game.player);
   startBattle(game, { type: "encounter", enemy: enemy });
 }
@@ -537,6 +587,9 @@ function fleeEncounter() {
   }
   clearUnitPath(game.player);
   game.encounter = null;
+  if (game.ui) {
+    game.ui.enemyArmyPreview = null;
+  }
   game.state = "world";
   setNotice("已逃离", ["暂避锋芒，重新整队"], 1.6, "gold");
 }
@@ -573,7 +626,7 @@ function loadIntoCurrentGame(fromStart) {
     return;
   }
   applySaveToGame(game, data);
-  resetFogOfWar(game);
+  game.fog = restoreFogOfWar(game.map, data.fog, game.player);
   game.mapUi = {
     miniMap: createMiniMapState(),
     worldMap: createWorldMapState()
@@ -583,6 +636,11 @@ function loadIntoCurrentGame(fromStart) {
   game.nearResource = null;
   game.capturingResource = null;
   game.encounter = null;
+  if (game.ui) {
+    resetTownUi(game);
+    game.ui.selectedArmySoldierKey = null;
+    game.ui.enemyArmyPreview = null;
+  }
   game.travelDestination = null;
   game.message = "读档完成，欢迎回来。";
   game.state = "world";
@@ -615,6 +673,11 @@ function startNewGame() {
   game.pendingEncounter = null;
   game.encounter = null;
   game.travelDestination = null;
+  if (game.ui) {
+    resetTownUi(game);
+    game.ui.selectedArmySoldierKey = null;
+    game.ui.enemyArmyPreview = null;
+  }
   game.notice = null;
   game.message = "点击地面移动，WASD 行军。靠近城镇按 E 进入，按 R 攻城。";
   game.log = ["探索大陆、招募扩军、攻城收税、统一全境", "提示：ESC 打开军务菜单 | F5 保存 | F9 读档"];
