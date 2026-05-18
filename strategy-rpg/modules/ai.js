@@ -4,7 +4,7 @@ import { applyRandomGeneralAttributes } from "./generals.js";
 import { findNearestTown, findOpenPosition, isPassable } from "./map.js";
 import { addWarReport } from "./reports.js";
 import { createArmy, createWildArmy, getArmyPower, upgradeArmyByBudget } from "./troop.js";
-import { distanceXY, moveToward, pick, rand, randInt } from "./utils.js";
+import { distanceXY, moveToward, pick, rand, randInt, updateFacing } from "./utils.js";
 
 // AI 模块：NPC 游荡、野怪巡逻、索敌和攻城行为都集中在这里。
 export function createInitialNpcs(map) {
@@ -293,19 +293,6 @@ function moveNpc(npc, map, dt) {
   if (arrived) {
     npc.target = null;
   }
-}
-
-function updateFacing(entity, dx, dy) {
-  if (Math.hypot(dx, dy) < 0.01) {
-    return;
-  }
-  entity.facingAngle = Math.atan2(dy, dx) + Math.PI / 2;
-  if (Math.abs(dx) > Math.abs(dy)) {
-    entity.facing = dx > 0 ? "right" : "left";
-  } else {
-    entity.facing = dy > 0 ? "down" : "up";
-  }
-  entity.lastMoveAt = performance.now();
 }
 
 function handleNpcInteractions(npc, game, dt) {

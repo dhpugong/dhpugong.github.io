@@ -10,7 +10,7 @@ import { addWarReport } from "./modules/reports.js";
 import { createRenderer, renderGame } from "./modules/render.js";
 import { applySaveToGame, autoSaveIfNeeded, createFreshGameData, deleteSaveSlot, loadGameData, loadResumeGameData, saveGame, saveResumeGame } from "./modules/save.js";
 import { enterTown, resetTownUi } from "./modules/town.js";
-import { distanceXY, moveToward } from "./modules/utils.js";
+import { distanceXY, ensureFacingState, moveToward, updateFacing } from "./modules/utils.js";
 import { clearArmyUiState, clearEnemyArmyPreview, createUi, getClickedButton, handleUiAction } from "./modules/ui.js";
 import { createMapCamera as createCamera, focusCameraOn, releaseCamera, screenToWorld, updateMapCamera as updateCamera } from "./map/camera.js";
 import { createDisplay, updateDisplay } from "./modules/display.js";
@@ -449,36 +449,6 @@ function updatePlayerMovement(dt, click) {
 
   clampToMap(game.map, game.player);
   updateFogOfWar(game.fog, game.map, game.player);
-}
-
-function ensureFacingState(entity) {
-  if (!entity.facing) {
-    entity.facing = "down";
-  }
-  if (typeof entity.facingAngle !== "number") {
-    entity.facingAngle = facingToAngle(entity.facing);
-  }
-}
-
-function updateFacing(entity, dx, dy) {
-  if (Math.hypot(dx, dy) < 0.01) {
-    ensureFacingState(entity);
-    return;
-  }
-  entity.facingAngle = Math.atan2(dy, dx) + Math.PI / 2;
-  if (Math.abs(dx) > Math.abs(dy)) {
-    entity.facing = dx > 0 ? "right" : "left";
-  } else {
-    entity.facing = dy > 0 ? "down" : "up";
-  }
-  entity.lastMoveAt = performance.now();
-}
-
-function facingToAngle(facing) {
-  if (facing === "right") return Math.PI / 2;
-  if (facing === "down") return Math.PI;
-  if (facing === "left") return -Math.PI / 2;
-  return 0;
 }
 
 function movePlayerBy(dx, dy, dt) {

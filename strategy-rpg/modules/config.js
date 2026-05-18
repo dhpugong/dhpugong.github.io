@@ -16,7 +16,7 @@ export const CONFIG = {
   dayLength: 38,
   targetFps: {
     start: 24,
-    world: 30,
+    world: 60,
     battle: 45,
     ui: 24
   },

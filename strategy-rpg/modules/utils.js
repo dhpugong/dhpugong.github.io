@@ -43,6 +43,58 @@ export function formatNumber(value) {
   return Math.floor(value).toLocaleString("zh-CN");
 }
 
+export function darkenColor(hex, amount) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const dr = Math.round(r * (1 - amount));
+  const dg = Math.round(g * (1 - amount));
+  const db = Math.round(b * (1 - amount));
+  return "#" + [dr, dg, db].map((c) => c.toString(16).padStart(2, "0")).join("");
+}
+
+export function lightenColor(hex, amount) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lr = Math.round(r + (255 - r) * amount);
+  const lg = Math.round(g + (255 - g) * amount);
+  const lb = Math.round(b + (255 - b) * amount);
+  return "#" + [lr, lg, lb].map((c) => c.toString(16).padStart(2, "0")).join("");
+}
+
+export function facingToAngle(facing) {
+  if (facing === "right") return Math.PI / 2;
+  if (facing === "down") return Math.PI;
+  if (facing === "left") return -Math.PI / 2;
+  return 0;
+}
+
+export function ensureFacingState(entity) {
+  if (!entity.facing) {
+    entity.facing = "down";
+  }
+  if (typeof entity.facingAngle !== "number") {
+    entity.facingAngle = facingToAngle(entity.facing);
+  }
+}
+
+export function updateFacing(entity, dx, dy, options = {}) {
+  if (Math.hypot(dx, dy) < 0.01) {
+    if (options.ensureFacing) {
+      ensureFacingState(entity);
+    }
+    return;
+  }
+  entity.facingAngle = Math.atan2(dy, dx) + Math.PI / 2;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    entity.facing = dx > 0 ? "right" : "left";
+  } else {
+    entity.facing = dy > 0 ? "down" : "up";
+  }
+  entity.lastMoveAt = performance.now();
+}
+
 export function rectContains(rect, x, y) {
   return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
 }

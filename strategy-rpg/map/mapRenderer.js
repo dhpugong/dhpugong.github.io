@@ -1,6 +1,6 @@
 import { CONFIG, FACTIONS, MINIMAP_ICON_COLORS, TERRAIN } from "../modules/config.js";
 import { getTerrainById } from "../modules/map.js";
-import { drawPixelText } from "../modules/utils.js";
+import { darkenColor, drawPixelText } from "../modules/utils.js";
 import { drawFogOfWar } from "./fog.js";
 
 const CHUNK_TILES = 16;
@@ -1032,12 +1032,3 @@ function hexToRgb(hex) {
   };
 }
 
-function darkenColor(hex, amount) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const dr = Math.round(r * (1 - amount));
-  const dg = Math.round(g * (1 - amount));
-  const db = Math.round(b * (1 - amount));
-  return "#" + [dr, dg, db].map((c) => c.toString(16).padStart(2, "0")).join("");
-}
