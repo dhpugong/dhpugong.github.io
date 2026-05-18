@@ -109,7 +109,11 @@ function deployGeneral(battle, general, side, bonus) {
     dir,
     positioned: false,
     general: true,
-    weapon
+    weapon,
+    animSeed: Math.random() * 1000,
+    attackPulse: 0,
+    hitFlash: 0,
+    skillPulse: 0
   });
 }
 
@@ -173,7 +177,11 @@ function deployFormation(battle, army, side, bonus) {
         deathTimer: 0,
         dead: false,
         dir,
-        positioned: false
+        positioned: false,
+        animSeed: Math.random() * 1000,
+        attackPulse: 0,
+        hitFlash: 0,
+        skillPulse: 0
       });
     }
 
@@ -238,6 +246,8 @@ export function fleeBattle(game) {
 }
 
 function updateBattleUnit(battle, unit, dt) {
+  updateBattleAnimationTimers(unit, dt);
+
   if (unit.dead) {
     unit.deathTimer += dt;
     return;
@@ -277,6 +287,12 @@ function updateBattleUnit(battle, unit, dt) {
   }
 }
 
+function updateBattleAnimationTimers(unit, dt) {
+  unit.attackPulse = Math.max(0, (unit.attackPulse || 0) - dt);
+  unit.hitFlash = Math.max(0, (unit.hitFlash || 0) - dt);
+  unit.skillPulse = Math.max(0, (unit.skillPulse || 0) - dt);
+}
+
 // 优先攻击最近的敌人，但远程优先攻击敌方远程
 function findBestTarget(battle, unit) {
   const enemies = battle.units.filter((u) => u.side !== unit.side && !u.dead);
@@ -302,6 +318,7 @@ function performAttack(battle, unit, target) {
   const crit = Math.random() < unit.crit;
   const base = Math.max(2, unit.attack - target.defense * 0.5);
   const damage = Math.round(base * rand(0.8, 1.22) * (crit ? 1.9 : 1));
+  unit.attackPulse = 0.22;
   damageUnit(battle, target, damage, unit.type);
 
   // 攻击特效
@@ -326,6 +343,8 @@ function castSkill(battle, unit, target) {
   const skillId = unit.skill;
   const skill = SKILLS[skillId];
   if (!skill) return;
+  unit.attackPulse = Math.max(unit.attackPulse || 0, 0.35);
+  unit.skillPulse = 0.48;
 
   if (skillId === "fireball") {
     const victims = battle.units.filter(
@@ -374,6 +393,7 @@ function castSkill(battle, unit, target) {
 }
 
 function damageUnit(battle, unit, amount, sourceType) {
+  unit.hitFlash = 0.18;
   unit.hp -= amount;
   if (unit.hp <= 0 && !unit.dead) {
     unit.dead = true;

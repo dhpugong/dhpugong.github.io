@@ -1,6 +1,7 @@
 import { CONFIG, FACTIONS } from "./config.js";
 import { WEAPONS } from "./config.js";
 import { buyMarketItem, ensurePlayerGoods, getMarketItem, getPlayerSellListings, getTownSellListings, sellMarketItem } from "./market.js";
+import { setNotice } from "./notice.js";
 import { expToNextLevel, getTownDailyIncome } from "./player.js";
 import { getArmyPower, getArmySize, getMaxArmySize, getMaxTroopLevel, getRecruitOptions, getRosterLines, getSingleTroopUpgradeCost, getTroopBatchUpgradeCost, getTroopLevelStats, isArmyMoraleFull, upgradeSingleTroop, upgradeTroopBatch } from "./troop.js";
 import { developTown, getTownDevelopmentCost, leaveTown, recruitFromTown, resetTownUi, restAtTown } from "./town.js";
@@ -44,6 +45,23 @@ const ATTR_IDS = ["strength", "agility", "intelligence", "leadership"];
 
 export function createUi() {
   return { buttons: [], toastTimer: 0, armyMultiSelect: false, selectedArmySoldierKeys: [] };
+}
+
+export function clearArmyUiState(ui) {
+  if (!ui) {
+    return;
+  }
+  ui.selectedArmySoldierKey = null;
+  ui.selectedArmySoldierKeys = [];
+  ui.armyMultiSelect = false;
+}
+
+export function clearEnemyArmyPreview(ui) {
+  if (!ui) {
+    return;
+  }
+  ui.enemyArmyPreview = null;
+  ui.enemyArmyPage = 0;
 }
 
 export function clearButtons(ui) {
@@ -215,13 +233,17 @@ function drawTravelDestinationHint(ctx, game, button) {
   const dx = game.travelDestination.x - game.player.x;
   const dy = game.travelDestination.y - game.player.y;
   const distance = Math.round(Math.hypot(dx, dy) / CONFIG.tileSize);
+  const hintW = 148;
+  const hintH = 20;
+  const hintX = Math.min(button.x - hintW - 16, QUEST_PANEL.x - hintW - 32);
+  const hintY = button.y + button.h + 6;
   ctx.save();
   ctx.fillStyle = "rgba(3, 8, 10, 0.72)";
-  ctx.fillRect(button.x - 8, button.y + button.h + 6, button.w + 16, 20);
+  ctx.fillRect(hintX, hintY, hintW, hintH);
   ctx.strokeStyle = "rgba(125,243,255,0.42)";
   ctx.lineWidth = 1;
-  ctx.strokeRect(button.x - 7.5, button.y + button.h + 6.5, button.w + 16, 20);
-  drawPixelText(ctx, "目的地 " + distance + "格", button.x + button.w / 2, button.y + button.h + 11, "#7df3ff", 10, "center");
+  ctx.strokeRect(hintX + 0.5, hintY + 0.5, hintW, hintH);
+  drawPixelText(ctx, "目的地 " + distance + "格", hintX + hintW / 2, hintY + 5, "#7df3ff", 10, "center");
   ctx.restore();
 }
 
@@ -1542,9 +1564,7 @@ export function handleUiAction(game, action) {
     return true;
   }
   if (action === "closeArmy") {
-    game.ui.selectedArmySoldierKey = null;
-    game.ui.selectedArmySoldierKeys = [];
-    game.ui.armyMultiSelect = false;
+    clearArmyUiState(game.ui);
     game.state = "world";
     return true;
   }
@@ -1593,10 +1613,8 @@ export function handleUiAction(game, action) {
     game.pendingEncounter = null;
     game.encounter = null;
     resetTownUi(game);
-    game.ui.selectedArmySoldierKey = null;
-    game.ui.enemyArmyPreview = null;
-    game.ui.armyMultiSelect = false;
-    game.ui.selectedArmySoldierKeys = [];
+    clearArmyUiState(game.ui);
+    clearEnemyArmyPreview(game.ui);
     if (game.player) {
       game.player.target = null;
     }
@@ -1627,13 +1645,7 @@ export function handleUiAction(game, action) {
   if (action.indexOf("upgradeTroop:") === 0) {
     var stackIndex = Number(action.split(":")[1]);
     var result = upgradeSingleTroop(game.player, stackIndex);
-    game.notice = {
-      title: result.ok ? "升级完成" : "无法升级",
-      lines: [result.message],
-      timer: 1.8,
-      duration: 1.8,
-      kind: "gold"
-    };
+    setNotice(game, result.ok ? "升级完成" : "无法升级", [result.message], 1.8, "gold");
     if (result.ok && result.upgraded) {
       setSelectedArmySoldier(game, result.upgraded.type, result.upgraded.level);
     }
@@ -1642,13 +1654,7 @@ export function handleUiAction(game, action) {
   if (action.indexOf("upgradeSingleTroop:") === 0) {
     var singleStackIndex = Number(action.split(":")[1]);
     var singleResult = upgradeSingleTroop(game.player, singleStackIndex);
-    game.notice = {
-      title: singleResult.ok ? "升级完成" : "无法升级",
-      lines: [singleResult.message],
-      timer: 1.8,
-      duration: 1.8,
-      kind: "gold"
-    };
+    setNotice(game, singleResult.ok ? "升级完成" : "无法升级", [singleResult.message], 1.8, "gold");
     if (singleResult.ok && singleResult.upgraded) {
       setSelectedArmySoldier(game, singleResult.upgraded.type, singleResult.upgraded.level);
     }
@@ -1672,13 +1678,7 @@ export function handleUiAction(game, action) {
     cleanSelectedArmySoldierKeys(game.ui, soldiers);
     var selectedSoldiers = getSelectedArmySoldiers(game.ui, soldiers);
     var batchResult = upgradeTroopBatch(game.player, getArmySoldierUpgradeGroups(selectedSoldiers));
-    game.notice = {
-      title: batchResult.ok ? "批量升级完成" : "无法升级",
-      lines: [batchResult.message],
-      timer: 1.8,
-      duration: 1.8,
-      kind: "gold"
-    };
+    setNotice(game, batchResult.ok ? "批量升级完成" : "无法升级", [batchResult.message], 1.8, "gold");
     game.message = batchResult.message;
     if (batchResult.ok) {
       game.ui.selectedArmySoldierKeys = [];
@@ -1736,8 +1736,7 @@ export function handleUiAction(game, action) {
     return true;
   }
   if (action === "closeEnemyArmyPreview") {
-    game.ui.enemyArmyPreview = null;
-    game.ui.enemyArmyPage = 0;
+    clearEnemyArmyPreview(game.ui);
     return true;
   }
   if (action.indexOf("selectMarketItem:") === 0) {
@@ -1750,26 +1749,14 @@ export function handleUiAction(game, action) {
     var buyParts = action.split(":");
     var buyResult = buyMarketItem(game, game.activeTown, buyParts[1], buyParts[2]);
     game.message = buyResult.message;
-    game.notice = {
-      title: buyResult.ok ? "交易完成" : "交易失败",
-      lines: [buyResult.message],
-      timer: 1.6,
-      duration: 1.6,
-      kind: "gold"
-    };
+    setNotice(game, buyResult.ok ? "交易完成" : "交易失败", [buyResult.message], 1.6, "gold");
     return true;
   }
   if (action.indexOf("sellMarket:") === 0) {
     var sellParts = action.split(":");
     var sellResult = sellMarketItem(game, game.activeTown, sellParts[1], sellParts[2]);
     game.message = sellResult.message;
-    game.notice = {
-      title: sellResult.ok ? "交易完成" : "交易失败",
-      lines: [sellResult.message],
-      timer: 1.6,
-      duration: 1.6,
-      kind: "gold"
-    };
+    setNotice(game, sellResult.ok ? "交易完成" : "交易失败", [sellResult.message], 1.6, "gold");
     if (!sellResult.ok || !playerOwnsMarketItem(game.player, sellParts[1], sellParts[2])) {
       game.ui.selectedMarketItem = null;
     }

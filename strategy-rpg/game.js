@@ -1,20 +1,20 @@
 import { createInitialNpcs, growFactionTowns, spawnWildIfNeeded, updateNpcs } from "./modules/ai.js";
 import { finishBattle, fleeBattle, startBattle, updateBattle } from "./modules/battle.js";
-import { createCamera, screenToWorld, updateCamera } from "./modules/camera.js";
 import { CONFIG } from "./modules/config.js";
 import { consumeClick, consumeDoubleClick, consumeKey, consumeTextInput, createInput, getMovementVector } from "./modules/input.js";
 import { clampToMap, ensurePassablePosition, findNearestResource, findNearestTown, findSafeStep, getTile, isPassable } from "./modules/map.js";
+import { setNotice as assignNotice, updateNotice as advanceNotice } from "./modules/notice.js";
 import { createPlayer, processNewDay, refreshOwnedResources, refreshOwnedTowns } from "./modules/player.js";
+import { handlePrivilegeInput as processPrivilegeInput, redeemPrivilegeCode as redeemPrivilege } from "./modules/privilege.js";
 import { addWarReport } from "./modules/reports.js";
 import { createRenderer, renderGame } from "./modules/render.js";
-import { applySaveToGame, autoSaveIfNeeded, createFreshGameData, hasSave, loadGameData, saveGame } from "./modules/save.js";
-import { getArmyPower } from "./modules/troop.js";
+import { applySaveToGame, autoSaveIfNeeded, createFreshGameData, loadGameData, saveGame } from "./modules/save.js";
 import { enterTown, resetTownUi } from "./modules/town.js";
 import { distanceXY, moveToward } from "./modules/utils.js";
-import { getClickedButton, handleUiAction } from "./modules/ui.js";
-import { focusCameraOn, releaseCamera } from "./map/camera.js";
+import { clearArmyUiState, clearEnemyArmyPreview, createUi, getClickedButton, handleUiAction } from "./modules/ui.js";
+import { createMapCamera as createCamera, focusCameraOn, releaseCamera, screenToWorld, updateMapCamera as updateCamera } from "./map/camera.js";
 import { createDisplay, updateDisplay } from "./modules/display.js";
-import { createFogOfWar, resetFogOfWar, restoreFogOfWar, updateFogOfWar } from "./map/fog.js";
+import { createFogOfWar, restoreFogOfWar, updateFogOfWar } from "./map/fog.js";
 import { createMiniMapState, handleMiniMapClick, updateMiniMapHover } from "./map/minimap.js";
 import { assignUnitPath, buildRoadPreferredPath, clearUnitPath } from "./map/pathfinding.js";
 import { closeWorldMapToPlayer, createWorldMapState, handleWorldMapClick, handleWorldMapDoubleClick, updateWorldMap } from "./map/worldmap.js";
@@ -38,7 +38,7 @@ var game = {
   player: fresh.player || createPlayer(),
   camera: camera,
   input: input,
-  ui: { buttons: [] },
+  ui: createUi(),
   fog: createFogOfWar(fresh.map),
   mapUi: {
     miniMap: createMiniMapState(),
@@ -108,7 +108,7 @@ function getTargetFps() {
 }
 
 function updateGame(dt) {
-  updateNotice(dt);
+  advanceNotice(game, dt);
   handlePrivilegeInput();
   handleGlobalShortcuts();
   saveBeforeStartIfRequested();
@@ -168,7 +168,7 @@ function handleGlobalShortcuts() {
     } else if (game.ui && game.ui.selectedMarketItem) {
       game.ui.selectedMarketItem = null;
     } else if (game.ui && game.ui.enemyArmyPreview) {
-      game.ui.enemyArmyPreview = null;
+      clearEnemyArmyPreview(game.ui);
     } else if (game.ui && game.ui.selectedArmySoldierKey) {
       game.ui.selectedArmySoldierKey = null;
     } else if (game.mapUi && game.mapUi.worldMap && game.mapUi.worldMap.open) {
@@ -184,11 +184,7 @@ function handleGlobalShortcuts() {
       game.state = game.previousState && game.previousState !== "settings" ? game.previousState : "world";
       game.previousState = null;
     } else if (game.state === "army") {
-      if (game.ui) {
-        game.ui.selectedArmySoldierKey = null;
-        game.ui.selectedArmySoldierKeys = [];
-        game.ui.armyMultiSelect = false;
-      }
+      clearArmyUiState(game.ui);
       game.state = "world";
       game.message = "回到大地图";
     } else if (game.state === "town") {
@@ -239,16 +235,12 @@ function handleUiClick(click) {
     return true;
   }
   if (button.action === "acceptEncounter") {
-    if (game.ui) {
-      game.ui.enemyArmyPreview = null;
-    }
+    clearEnemyArmyPreview(game.ui);
     acceptEncounter();
     return true;
   }
   if (button.action === "fleeEncounter") {
-    if (game.ui) {
-      game.ui.enemyArmyPreview = null;
-    }
+    clearEnemyArmyPreview(game.ui);
     fleeEncounter();
     return true;
   }
@@ -263,9 +255,7 @@ function handleUiClick(click) {
       if (game.nearTown.owner === "player") {
         setNotice("无需攻城", [game.nearTown.name + " 已是我方城池"], 1.8, "gold");
       } else {
-        if (game.ui) {
-          game.ui.enemyArmyPreview = null;
-        }
+        clearEnemyArmyPreview(game.ui);
         clearUnitPath(game.player);
         addWarReport(game, "我军正在攻击 " + game.nearTown.name, "good");
         startBattle(game, { type: "siege", enemy: game.nearTown, town: game.nearTown });
@@ -473,9 +463,7 @@ function handleWorldInteractions() {
         game.message = nearTown.name + " 已是我方城池，无需攻城";
         setNotice("无需攻城", [nearTown.name + " 已是我方城池"], 1.8, "gold");
       } else {
-        if (game.ui) {
-          game.ui.enemyArmyPreview = null;
-        }
+        clearEnemyArmyPreview(game.ui);
         clearUnitPath(game.player);
         addWarReport(game, "我军正在攻击 " + nearTown.name, "good");
         startBattle(game, { type: "siege", enemy: nearTown, town: nearTown });
@@ -560,17 +548,13 @@ function openEncounter(enemy) {
 
 function acceptEncounter() {
   if (!game.encounter || !game.encounter.enemy) {
-    if (game.ui) {
-      game.ui.enemyArmyPreview = null;
-    }
+    clearEnemyArmyPreview(game.ui);
     game.state = "world";
     return;
   }
   var enemy = game.encounter.enemy;
   game.encounter = null;
-  if (game.ui) {
-    game.ui.enemyArmyPreview = null;
-  }
+  clearEnemyArmyPreview(game.ui);
   clearUnitPath(game.player);
   startBattle(game, { type: "encounter", enemy: enemy });
 }
@@ -590,9 +574,7 @@ function fleeEncounter() {
   }
   clearUnitPath(game.player);
   game.encounter = null;
-  if (game.ui) {
-    game.ui.enemyArmyPreview = null;
-  }
+  clearEnemyArmyPreview(game.ui);
   game.state = "world";
   setNotice("已逃离", ["暂避锋芒，重新整队"], 1.6, "gold");
 }
@@ -641,10 +623,8 @@ function loadIntoCurrentGame(fromStart) {
   game.encounter = null;
   if (game.ui) {
     resetTownUi(game);
-    game.ui.selectedArmySoldierKey = null;
-    game.ui.selectedArmySoldierKeys = [];
-    game.ui.armyMultiSelect = false;
-    game.ui.enemyArmyPreview = null;
+    clearArmyUiState(game.ui);
+    clearEnemyArmyPreview(game.ui);
   }
   game.travelDestination = null;
   game.message = "读档完成，欢迎回来。";
@@ -681,10 +661,8 @@ function startNewGame() {
   game.travelDestination = null;
   if (game.ui) {
     resetTownUi(game);
-    game.ui.selectedArmySoldierKey = null;
-    game.ui.selectedArmySoldierKeys = [];
-    game.ui.armyMultiSelect = false;
-    game.ui.enemyArmyPreview = null;
+    clearArmyUiState(game.ui);
+    clearEnemyArmyPreview(game.ui);
   }
   game.notice = null;
   game.message = "点击地面移动，WASD 行军。靠近城镇按 E 进入，按 R 攻城。";
@@ -722,106 +700,17 @@ function saveSettings(nextSettings) {
 }
 
 function handlePrivilegeInput() {
-  const events = consumeTextInput(input);
-  if (!game.privilege || !game.privilege.open || !events.length) {
-    return;
-  }
-  for (const event of events) {
-    if (event.type === "char") {
-      game.privilege.input = (game.privilege.input + event.value).slice(0, 32);
-    } else if (event.type === "backspace") {
-      game.privilege.input = game.privilege.input.slice(0, -1);
-    } else if (event.type === "enter") {
-      redeemPrivilegeCode();
-    } else if (event.type === "escape") {
-      game.privilege.open = false;
-      input.keys.delete("escape");
-    }
+  const wasOpen = Boolean(game.privilege && game.privilege.open);
+  processPrivilegeInput(game, consumeTextInput(input), redeemPrivilegeCode);
+  if (wasOpen && game.privilege && !game.privilege.open) {
+    input.keys.delete("escape");
   }
 }
 
 async function redeemPrivilegeCode() {
-  if (!game.privilege || !game.privilege.open || game.privilege.busy) {
-    return;
-  }
-  const inputCode = (game.privilege.input || "").trim();
-  if (!inputCode) {
-    setNotice("兑换失败", ["请输入兑换码"], 1.6, "gold");
-    return;
-  }
-
-  game.privilege.busy = true;
-  try {
-    const response = await fetch(PRIVILEGE_FILE, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error("privilege file not found");
-    }
-    const text = await response.text();
-    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    const code = lines[0] || "";
-    const gold = Math.max(0, Math.floor(Number(lines[1] || 0)));
-    if (!code || gold <= 0) {
-      setNotice("兑换失败", ["兑换码配置无效"], 1.8, "gold");
-      return;
-    }
-    if (inputCode !== code) {
-      setNotice("兑换失败", ["兑换码不正确"], 1.8, "gold");
-      return;
-    }
-    if (hasUsedPrivilegeCode(code)) {
-      setNotice("已兑换", ["该兑换码已经使用过"], 1.8, "gold");
-      return;
-    }
-    markPrivilegeCodeUsed(code);
-    game.player.gold += gold;
-    game.privilege.open = false;
-    game.privilege.input = "";
-    setNotice("兑换成功", ["金币 +" + gold], 2, "gold");
-  } catch (error) {
-    console.warn("兑换码读取失败", error);
-    setNotice("兑换失败", ["无法读取 privilege.txt"], 1.8, "gold");
-  } finally {
-    if (game.privilege) {
-      game.privilege.busy = false;
-    }
-  }
-}
-
-function hasUsedPrivilegeCode(code) {
-  ensurePrivilegeCodeState();
-  return game.player.usedPrivilegeCodes.includes(code);
-}
-
-function markPrivilegeCodeUsed(code) {
-  ensurePrivilegeCodeState();
-  if (!game.player.usedPrivilegeCodes.includes(code)) {
-    game.player.usedPrivilegeCodes.push(code);
-  }
-}
-
-function ensurePrivilegeCodeState() {
-  if (!game.player) {
-    return;
-  }
-  if (!Array.isArray(game.player.usedPrivilegeCodes)) {
-    game.player.usedPrivilegeCodes = [];
-  }
-}
-
-function updateNotice(dt) {
-  if (!game.notice) return;
-  game.notice.timer -= dt;
-  if (game.notice.timer <= 0) {
-    game.notice = null;
-  }
+  await redeemPrivilege(game, PRIVILEGE_FILE, setNotice);
 }
 
 function setNotice(title, lines, duration, kind) {
-  game.notice = {
-    title: title,
-    lines: Array.isArray(lines) ? lines : [],
-    timer: duration || 2,
-    duration: duration || 2,
-    kind: kind || "default"
-  };
+  assignNotice(game, title, lines, duration, kind);
 }

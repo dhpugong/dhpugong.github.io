@@ -830,19 +830,41 @@ function renderBattle(ctx, game) {
 
 function clearBattleBackground(ctx) {
   // 天空
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, 400);
-  skyGrad.addColorStop(0, "#1a0e0e");
-  skyGrad.addColorStop(0.6, "#0c0806");
-  skyGrad.addColorStop(1, "#050302");
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, CONFIG.canvasHeight);
+  skyGrad.addColorStop(0, "#89b8dc");
+  skyGrad.addColorStop(0.45, "#d4b87f");
+  skyGrad.addColorStop(1, "#607a4b");
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
 
+  const horizonGlow = ctx.createLinearGradient(0, 54, 0, 180);
+  horizonGlow.addColorStop(0, "rgba(255,232,174,0.42)");
+  horizonGlow.addColorStop(0.55, "rgba(255,194,113,0.18)");
+  horizonGlow.addColorStop(1, "rgba(255,194,113,0)");
+  ctx.fillStyle = horizonGlow;
+  ctx.fillRect(0, 54, CONFIG.canvasWidth, 126);
+
+  ctx.fillStyle = "rgba(255,248,220,0.42)";
+  for (let i = 0; i < 8; i += 1) {
+    const cx = 36 + i * 126;
+    const cy = 28 + (i % 3) * 10;
+    ctx.fillRect(cx, cy, 54, 5);
+    ctx.fillRect(cx + 18, cy - 5, 46, 5);
+    ctx.fillRect(cx + 64, cy + 2, 30, 4);
+  }
+
   // 远处山影
-  ctx.fillStyle = "rgba(30,20,15,0.4)";
+  ctx.fillStyle = "rgba(82,94,65,0.38)";
   for (let i = 0; i < 18; i += 1) {
     const mx = i * 58;
-    const mh = 20 + Math.sin(i * 1.7) * 18;
-    ctx.fillRect(mx, 64, 42, mh);
+    const mh = 28 + Math.sin(i * 1.7) * 16;
+    ctx.fillRect(mx, 66, 48, mh);
+  }
+  ctx.fillStyle = "rgba(104,128,79,0.26)";
+  for (let i = 0; i < 14; i += 1) {
+    const mx = i * 72 + 20;
+    const mh = 18 + Math.sin(i * 1.3) * 10;
+    ctx.fillRect(mx, 94, 62, mh);
   }
 }
 
@@ -853,33 +875,40 @@ function drawBattleField(ctx) {
   const h = 300;
 
   // 草地
-  ctx.fillStyle = "#2f3f25";
+  ctx.fillStyle = "#506f35";
+  ctx.fillRect(x, y, w, h);
+
+  const fieldGrad = ctx.createLinearGradient(0, y, 0, y + h);
+  fieldGrad.addColorStop(0, "rgba(148,179,82,0.24)");
+  fieldGrad.addColorStop(0.62, "rgba(60,90,43,0.08)");
+  fieldGrad.addColorStop(1, "rgba(28,39,20,0.16)");
+  ctx.fillStyle = fieldGrad;
   ctx.fillRect(x, y, w, h);
 
   // 草地纹理
-  ctx.fillStyle = "#3a5028";
+  ctx.fillStyle = "#7f9e4d";
   for (let i = 0; i < 36; i += 1) {
     ctx.fillRect(x + i * 26 + (i % 3) * 4, y + h - 48 + (i % 2) * 8, 14, 2);
   }
-  ctx.fillStyle = "#284420";
+  ctx.fillStyle = "#3f642e";
   for (let i = 0; i < 28; i += 1) {
     ctx.fillRect(x + i * 34 + 7, y + 20 + (i % 3) * 12, 10, 2);
   }
 
   // 泥土 / 道路
-  ctx.fillStyle = "#6a4c25";
+  ctx.fillStyle = "#8a6335";
   ctx.fillRect(x, y + h - 28, w, 28);
-  ctx.fillStyle = "#7a5a30";
+  ctx.fillStyle = "#b18248";
   ctx.fillRect(x, y + h - 26, w, 4);
 
   // 石子和车辙
-  ctx.fillStyle = "rgba(140,110,70,0.5)";
+  ctx.fillStyle = "rgba(227,190,122,0.55)";
   for (let i = 0; i < 22; i += 1) {
     ctx.fillRect(x + i * 44 + 6, y + h - 24 + (i % 2) * 5, 3, 2);
   }
 
   // 框线
-  ctx.strokeStyle = "#8f682e";
+  ctx.strokeStyle = "#b98a42";
   ctx.lineWidth = 2;
   ctx.strokeRect(x + 0.5, y + 0.5, w, h);
 }
@@ -889,7 +918,8 @@ function drawBattleField(ctx) {
 function drawBattleUnits(ctx, battle) {
   const offsetX = 30;
   const offsetY = 92;
-  const sorted = [...battle.units].sort((a, b) => a.y - b.y);
+  const sorted = [...battle.units].sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  const time = typeof battle.time === "number" ? battle.time : Date.now() / 1000;
 
   for (const unit of sorted) {
     const alpha = unit.dead ? Math.max(0, 1 - unit.deathTimer * 2.5) : 1;
@@ -902,213 +932,392 @@ function drawBattleUnits(ctx, battle) {
     ctx.globalAlpha = alpha;
 
     // 阴影
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.fillRect(x - 10, y + 13, 20, 5);
+    drawBattleGroundShadow(ctx, x, y, unit);
 
     // 根据单位类型绘制不同精灵
     if (unit.dead) {
-      drawDeadUnit(ctx, x, y, unit);
+      drawPremiumDeadUnit(ctx, x, y, unit);
     } else {
-      drawBattleSprite(ctx, x, y, unit);
+      drawPremiumBattleSprite(ctx, x, y, unit, time);
     }
 
     // 血条
     if (!unit.dead) {
-      drawBar(ctx, x - 14, y - 30, 28, 4, unit.hp / unit.maxHp, "#5fc46a", "#3a1510", "#1a0c05");
+      drawBattleHealthBar(ctx, x, y, unit);
     }
 
     ctx.restore();
   }
 }
 
-function drawBattleSprite(ctx, x, y, unit) {
-  const dir = unit.dir; // 1=面向右, -1=面向左
-  const color = unit.color;
-  const bodyColor = unit.side === "left" ? color : darkenColor(color, 0.15);
-
-  if (unit.general) {
-    drawGeneralSprite(ctx, x, y, unit, dir, color);
-    return;
-  }
-
-  // 腿
-  const legAnim = Math.sin(Date.now() / 200 + unit.x * 0.1) * 1.5;
-  ctx.fillStyle = "#3d3025";
-  ctx.fillRect(x - 5, y + 4, 4, 9);
-  ctx.fillRect(x + 2, y + 4, 4, 9);
-  // 靴子
-  ctx.fillStyle = "#2a1f15";
-  ctx.fillRect(x - 6, y + 13, 5, 3);
-  ctx.fillRect(x + 1, y + 13, 5, 3);
-
-  // 身体
-  ctx.fillStyle = bodyColor;
-  ctx.fillRect(x - 8, y - 8, 16, 15);
-  // 身体纹理
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.fillRect(x - 5, y - 6, 4, 8);
-
-  // 腰带
-  ctx.fillStyle = "#5a3d1e";
-  ctx.fillRect(x - 9, y + 2, 18, 3);
-
-  // 头
-  ctx.fillStyle = "#e8d5b7";
-  ctx.fillRect(x - 5, y - 18, 10, 11);
-
-  // 头盔
-  ctx.fillStyle = unit.side === "left" ? "#b0a090" : darkenColor(color, 0.2);
-  ctx.fillRect(x - 7, y - 22, 14, 7);
-  ctx.fillRect(x - 6, y - 26, 12, 5);
-  // 盔顶装饰
-  ctx.fillStyle = unit.side === "left" ? "#ffd56a" : "#c94f3f";
-  ctx.fillRect(x - 2, y - 29, 4, 4);
-
-  // 眼睛
-  ctx.fillStyle = "#0a0603";
-  if (dir > 0) {
-    ctx.fillRect(x + 1, y - 16, 2, 2);
-  } else {
-    ctx.fillRect(x - 4, y - 16, 2, 2);
-  }
-
-  // 武器和兵种特有绘制
-  drawWeaponByType(ctx, x, y, unit, dir, color);
+function drawBattleGroundShadow(ctx, x, y, unit) {
+  const w = unit.type === "cavalry" ? 46 : unit.general ? 34 : 28;
+  const h = unit.type === "cavalry" ? 9 : 7;
+  const shadowY = unit.type === "cavalry" ? y + 8 : y + 6;
+  ctx.save();
+  ctx.globalAlpha *= unit.dead ? 0.45 : 1;
+  ctx.fillStyle = "rgba(0,0,0,0.34)";
+  ctx.fillRect(Math.round(x - w / 2), Math.round(shadowY), w, h);
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.fillRect(Math.round(x - w / 3), Math.round(shadowY + 3), Math.round(w * 0.66), 3);
+  ctx.restore();
 }
 
-function drawGeneralSprite(ctx, x, y, unit, dir, color) {
+function drawBattleHealthBar(ctx, x, y, unit) {
+  const barW = unit.type === "cavalry" ? 42 : unit.general ? 40 : 32;
+  const barY = y - getPremiumBattleSpriteHeight(unit) - 9;
+  const ratio = clamp(unit.hp / unit.maxHp, 0, 1);
+  const fill = ratio > 0.55 ? "#63d16c" : ratio > 0.25 ? "#ffd56a" : "#ff7568";
+  ctx.fillStyle = "rgba(5, 3, 2, 0.72)";
+  ctx.fillRect(Math.round(x - barW / 2 - 1), Math.round(barY - 1), barW + 2, 6);
+  drawBar(ctx, Math.round(x - barW / 2), Math.round(barY), barW, 4, ratio, fill, "#3a1510", "#1a0c05");
+}
+
+function getPremiumBattleSpriteHeight(unit) {
+  if (unit.general) return 72;
+  if (unit.type === "cavalry") return 68;
+  if (unit.type === "mage") return 56;
+  return 60;
+}
+
+function getPremiumBattleGroundOffset(unit) {
+  if (unit.type === "cavalry") return 0;
+  if (unit.general) return 4;
+  return 3;
+}
+
+function drawPremiumBattleSprite(ctx, x, y, unit, time) {
+  const dir = unit.dir || 1;
+  const palette = getPremiumBattlePalette(unit);
+  const attack = getPremiumAttackAnim(unit);
+  const skill = clamp((unit.skillPulse || 0) / 0.48, 0, 1);
+  const seed = unit.animSeed || 0;
+  const bob = Math.round(Math.sin(time * (unit.type === "cavalry" ? 8 : 6) + seed) * (unit.type === "cavalry" ? 1.4 : 1));
+  const lunge = Math.round(attack * (unit.type === "cavalry" ? 8 : 4));
+  const groundOffset = getPremiumBattleGroundOffset(unit);
+
+  ctx.save();
+  ctx.translate(Math.round(x + dir * lunge), Math.round(y + bob + groundOffset));
+  ctx.scale(dir, 1);
+
+  if (skill > 0) {
+    drawPremiumSkillAura(ctx, unit, palette, skill, time);
+  }
+
+  if (unit.general) {
+    drawPremiumGeneralSprite(ctx, unit, palette, time, attack);
+  } else if (unit.type === "cavalry") {
+    drawPremiumCavalrySprite(ctx, unit, palette, time, attack);
+  } else if (unit.type === "mage") {
+    drawPremiumMageSprite(ctx, unit, palette, time, attack);
+  } else {
+    drawPremiumFootSoldierSprite(ctx, unit, palette, time, attack);
+  }
+
+  if ((unit.hitFlash || 0) > 0) {
+    drawPremiumHitFlash(ctx, unit);
+  }
+
+  ctx.restore();
+
+  if (unit.general) {
+    drawPixelText(ctx, unit.name, x, y + 27, palette.trim, 10, "center");
+  }
+}
+
+function getPremiumAttackAnim(unit) {
+  const max = unit.type === "cavalry" || unit.general ? 0.35 : 0.25;
+  return Math.sin(clamp((unit.attackPulse || 0) / max, 0, 1) * Math.PI);
+}
+
+function getPremiumBattlePalette(unit) {
+  const base = unit.side === "left" ? unit.color : darkenColor(unit.color, 0.12);
+  const level = Math.max(1, Math.floor(unit.stackLevel || 1));
+  const elite = level >= 5;
+  return {
+    base,
+    dark: darkenColor(base, 0.42),
+    shade: darkenColor(base, 0.24),
+    light: lightenColor(base, 0.28),
+    trim: unit.side === "left" ? "#ffd56a" : "#ff8a74",
+    trimDark: unit.side === "left" ? "#b8792d" : "#8f2f28",
+    skin: unit.general ? "#f0d0a8" : "#e8d5b7",
+    leather: "#5b3c21",
+    leatherDark: "#2a1a0d",
+    cloth: unit.side === "left" ? "#7f2f27" : "#3b2634",
+    metal: elite ? "#e2c574" : level >= 3 ? "#b9c2c8" : "#87909a",
+    metalDark: elite ? "#876b2c" : "#4d5660",
+    horse: unit.side === "left" ? "#6a4424" : "#4b2c18",
+    horseDark: "#2b180d",
+    glow: unit.type === "mage" ? "#c79bff" : unit.side === "left" ? "#ffe6a6" : "#ff9a7a"
+  };
+}
+
+function drawPremiumFootSoldierSprite(ctx, unit, palette, time, attack) {
+  const step = Math.round(Math.sin(time * 9 + (unit.animSeed || 0)) * 2);
+  const armSwing = Math.round(attack * 6);
+
+  drawPremiumBackBanner(ctx, unit, palette, -7, -39, 20);
+  drawPixelBlock(ctx, -12, -29, 24, 25, palette.cloth);
+  drawPixelBlock(ctx, -10, -18, 20, 14, "rgba(0,0,0,0.14)");
+
+  drawPixelBlock(ctx, -8, -12, 5, 14 + step, palette.leatherDark);
+  drawPixelBlock(ctx, 3, -12, 5, 14 - step, palette.leatherDark);
+  drawPixelBlock(ctx, -10, 1 + step, 8, 4, "#17100a");
+  drawPixelBlock(ctx, 2, 1 - step, 8, 4, "#17100a");
+
+  drawPixelBlock(ctx, -12, -32, 24, 22, palette.dark);
+  drawPixelBlock(ctx, -9, -33, 18, 21, palette.base);
+  drawPixelBlock(ctx, -7, -31, 5, 16, palette.light);
+  drawPixelBlock(ctx, -13, -17, 26, 4, palette.leather);
+  drawPixelBlock(ctx, -3, -18, 6, 5, palette.trim);
+
+  drawPixelBlock(ctx, -16, -31, 7, 10, palette.metal);
+  drawPixelBlock(ctx, 9, -31, 7, 10, palette.metal);
+  drawPixelBlock(ctx, -18, -22, 7, 13, palette.shade);
+  drawPixelBlock(ctx, 11 + armSwing, -22, 7, 13, palette.shade);
+
+  drawPremiumBattleHead(ctx, unit, palette, -1, -43);
+  drawPremiumWeaponByType(ctx, unit, palette, attack);
+  drawPremiumLevelAccent(ctx, unit, palette);
+}
+
+function drawPremiumMageSprite(ctx, unit, palette, time, attack) {
+  const pulse = Math.sin(time * 4 + (unit.animSeed || 0)) * 0.5 + 0.5;
+  drawPixelBlock(ctx, -11, -33, 22, 31, darkenColor(palette.base, 0.18));
+  drawPixelBlock(ctx, -8, -38, 16, 16, palette.base);
+  drawPixelBlock(ctx, -6, -31, 12, 27, palette.light);
+  drawPixelBlock(ctx, -12, -14, 24, 8, palette.dark);
+  drawPixelBlock(ctx, -9, -43, 18, 8, palette.dark);
+  drawPixelBlock(ctx, -7, -47, 14, 8, palette.base);
+  drawPixelBlock(ctx, -4, -42, 8, 7, palette.skin);
+  drawPixelBlock(ctx, 1, -39, 2, 2, "#090604");
+  drawPixelBlock(ctx, -15, -27, 7, 16, palette.shade);
+  drawPixelBlock(ctx, 8 + Math.round(attack * 4), -27, 7, 16, palette.shade);
+  drawPixelBlock(ctx, 15, -43, 3, 43, "#5a3a5a");
+  drawPixelBlock(ctx, 12, -49, 9, 9, `rgba(199,155,255,${0.72 + pulse * 0.2})`);
+  drawPixelBlock(ctx, 14, -47, 5, 5, `rgba(255,235,255,${0.4 + pulse * 0.3})`);
+  drawPixelBlock(ctx, 10, -42, 13, 2, `rgba(199,155,255,${0.35 + pulse * 0.2})`);
+  drawPremiumLevelAccent(ctx, unit, palette);
+}
+
+function drawPremiumCavalrySprite(ctx, unit, palette, time, attack) {
+  const gallop = Math.round(Math.sin(time * 11 + (unit.animSeed || 0)) * 3);
+  const mane = Math.round(Math.sin(time * 7 + (unit.animSeed || 0)) * 1.5);
+
+  drawPixelBlock(ctx, -24, -17, 43, 18, palette.horseDark);
+  drawPixelBlock(ctx, -26, -20, 42, 16, palette.horse);
+  drawPixelBlock(ctx, 11, -27, 17, 15, palette.horse);
+  drawPixelBlock(ctx, 22, -23, 8, 7, palette.horse);
+  drawPixelBlock(ctx, 14, -29, 5, 15, palette.horseDark);
+  drawPixelBlock(ctx, -22, -22 + mane, 11, 5, palette.horseDark);
+  drawPixelBlock(ctx, 24, -23, 2, 2, "#080503");
+
+  drawPixelBlock(ctx, -21, -5, 5, 13 + gallop, palette.horseDark);
+  drawPixelBlock(ctx, -9, -5, 5, 13 - gallop, palette.horseDark);
+  drawPixelBlock(ctx, 6, -5, 5, 13 - gallop, palette.horseDark);
+  drawPixelBlock(ctx, 18, -9, 5, 16 + gallop, palette.horseDark);
+  drawPixelBlock(ctx, -23, 7 + gallop, 8, 3, "#17100a");
+  drawPixelBlock(ctx, -11, 7 - gallop, 8, 3, "#17100a");
+  drawPixelBlock(ctx, 4, 7 - gallop, 8, 3, "#17100a");
+  drawPixelBlock(ctx, 16, 7 + gallop, 8, 3, "#17100a");
+
+  drawPixelBlock(ctx, -12, -27, 24, 8, palette.leather);
+  drawPixelBlock(ctx, -5, -43, 16, 21, palette.base);
+  drawPixelBlock(ctx, -8, -41, 22, 13, palette.metal);
+  drawPixelBlock(ctx, -2, -52, 12, 12, palette.skin);
+  drawPixelBlock(ctx, -5, -58, 18, 9, palette.metal);
+  drawPixelBlock(ctx, 0, -63, 7, 6, palette.trim);
+  drawPixelBlock(ctx, 6, -38, 7, 13, palette.shade);
+
+  drawPixelBlock(ctx, 13, -43, 42 + Math.round(attack * 9), 3, "#8a7050");
+  drawPixelBlock(ctx, 50 + Math.round(attack * 9), -47, 7, 8, "#e8d0b0");
+  drawPixelBlock(ctx, -14, -35, 7, 18, palette.cloth);
+  drawPremiumLevelAccent(ctx, unit, palette);
+}
+
+function drawPremiumGeneralSprite(ctx, unit, palette, time, attack) {
   const weapon = unit.weapon || {};
-  ctx.fillStyle = "rgba(255,213,106,0.16)";
-  ctx.fillRect(x - 13, y - 32, 26, 3);
+  const step = Math.round(Math.sin(time * 7 + (unit.animSeed || 0)) * 1.4);
+  const capeWave = Math.round(Math.sin(time * 5 + (unit.animSeed || 0)) * 2);
 
-  ctx.fillStyle = "#2a1a0a";
-  ctx.fillRect(x - 7, y + 5, 5, 11);
-  ctx.fillRect(x + 2, y + 5, 5, 11);
-  ctx.fillStyle = "#17100a";
-  ctx.fillRect(x - 8, y + 15, 8, 3);
-  ctx.fillRect(x + 1, y + 15, 8, 3);
+  drawPixelBlock(ctx, -18, -42, 36 + capeWave, 35, palette.cloth);
+  drawPixelBlock(ctx, -14, -18, 28, 13, "rgba(0,0,0,0.18)");
+  drawPixelBlock(ctx, -10, -13, 6, 17 + step, palette.leatherDark);
+  drawPixelBlock(ctx, 4, -13, 6, 17 - step, palette.leatherDark);
+  drawPixelBlock(ctx, -12, 3 + step, 10, 4, "#160f08");
+  drawPixelBlock(ctx, 2, 3 - step, 10, 4, "#160f08");
 
-  ctx.fillStyle = darkenColor(color, 0.28);
-  ctx.fillRect(x - 12, y - 12, 24, 22);
-  ctx.fillStyle = color;
-  ctx.fillRect(x - 9, y - 13, 18, 20);
-  ctx.fillStyle = "#ffd56a";
-  ctx.fillRect(x - 10, y - 2, 20, 3);
-  ctx.fillRect(x - 4, y - 18, 8, 5);
+  drawPixelBlock(ctx, -15, -38, 30, 29, palette.metalDark);
+  drawPixelBlock(ctx, -11, -40, 22, 28, palette.base);
+  drawPixelBlock(ctx, -9, -37, 18, 10, palette.metal);
+  drawPixelBlock(ctx, -16, -26, 32, 4, palette.trim);
+  drawPixelBlock(ctx, -5, -29, 10, 10, palette.trimDark);
+  drawPixelBlock(ctx, -19, -37, 9, 13, palette.metal);
+  drawPixelBlock(ctx, 10, -37, 9, 13, palette.metal);
 
-  ctx.fillStyle = "#e8d5b7";
-  ctx.fillRect(x - 6, y - 24, 12, 11);
-  ctx.fillStyle = "#d6a84f";
-  ctx.fillRect(x - 8, y - 30, 16, 7);
-  ctx.fillRect(x - 5, y - 35, 10, 5);
-  ctx.fillStyle = "#0a0603";
-  ctx.fillRect(x - 3, y - 21, 2, 2);
-  ctx.fillRect(x + 3, y - 21, 2, 2);
+  drawPremiumBattleHead(ctx, unit, palette, 0, -53, true);
+  drawPremiumGeneralWeapon(ctx, weapon, palette, attack);
+  drawPixelBlock(ctx, -20, -51, 40, 3, "rgba(255,213,106,0.18)");
+  drawPixelBlock(ctx, -23, -48, 46, 2, "rgba(255,213,106,0.1)");
+}
 
+function drawPremiumBattleHead(ctx, unit, palette, cx, cy, ornate = false) {
+  drawPixelBlock(ctx, cx - 6, cy, 12, 12, palette.skin);
+  drawPixelBlock(ctx, cx - 7, cy - 7, 14, 8, palette.metal);
+  drawPixelBlock(ctx, cx - 5, cy - 11, 10, 5, palette.metalDark);
+  drawPixelBlock(ctx, cx + 1, cy + 4, 2, 2, "#0a0603");
+  drawPixelBlock(ctx, cx - 7, cy + 1, 3, 9, "rgba(0,0,0,0.18)");
+  drawPixelBlock(ctx, cx + 6, cy + 1, 2, 7, "rgba(0,0,0,0.15)");
+  drawPixelBlock(ctx, cx - 2, cy - 14, 4, 5, palette.trim);
+  if (ornate) {
+    drawPixelBlock(ctx, cx - 8, cy - 10, 16, 3, palette.trim);
+    drawPixelBlock(ctx, cx - 5, cy - 16, 3, 6, palette.trim);
+    drawPixelBlock(ctx, cx + 2, cy - 16, 3, 6, palette.trim);
+  }
+}
+
+function drawPremiumWeaponByType(ctx, unit, palette, attack) {
+  if (unit.type === "infantry") {
+    drawPixelBlock(ctx, 14, -28 + Math.round(attack * 3), 24, 4, "#d8d2c6");
+    drawPixelBlock(ctx, 35, -31 + Math.round(attack * 3), 5, 10, "#f3ead8");
+    drawPixelBlock(ctx, -21, -29, 10, 21, palette.metalDark);
+    drawPixelBlock(ctx, -19, -27, 7, 17, palette.base);
+    drawPixelBlock(ctx, -18, -24, 5, 3, palette.trim);
+  } else if (unit.type === "pikeman") {
+    ctx.strokeStyle = "#8a7050";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(9, -29);
+    ctx.lineTo(51 + attack * 8, -43 - attack * 3);
+    ctx.stroke();
+    drawPixelBlock(ctx, 48 + Math.round(attack * 8), -48 - Math.round(attack * 3), 8, 10, "#e8d8c0");
+    drawPixelBlock(ctx, -18, -25, 9, 12, palette.metalDark);
+  } else if (unit.type === "archer") {
+    drawPixelBlock(ctx, -16, -35, 5, 20, "#5b3c21");
+    drawPixelBlock(ctx, -14, -37, 10, 3, "#d8d2c6");
+    ctx.strokeStyle = "#b58a52";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(16, -39);
+    ctx.quadraticCurveTo(27 + attack * 4, -28, 16, -13);
+    ctx.stroke();
+    ctx.strokeStyle = "#f3ead8";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(17, -38);
+    ctx.lineTo(20 - attack * 6, -26);
+    ctx.lineTo(17, -14);
+    ctx.stroke();
+    drawPixelBlock(ctx, 16, -27, 20, 2, "#d8d2c6");
+  }
+}
+
+function drawPremiumGeneralWeapon(ctx, weapon, palette, attack) {
   const weaponColor = weapon.color || "#f3ead8";
-  ctx.fillStyle = "#8a7050";
   if ((weapon.range || 0) > 80) {
-    ctx.fillRect(x + dir * 9, y - 20, dir * 3, 30);
+    ctx.strokeStyle = "#b58a52";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(17, -50);
+    ctx.quadraticCurveTo(31 + attack * 4, -33, 17, -15);
+    ctx.stroke();
     ctx.strokeStyle = weaponColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(x + dir * 10, y - 20);
-    ctx.lineTo(x + dir * 16, y - 6);
-    ctx.lineTo(x + dir * 10, y + 10);
+    ctx.moveTo(18, -49);
+    ctx.lineTo(22 - attack * 6, -32);
+    ctx.lineTo(18, -16);
     ctx.stroke();
   } else if ((weapon.attack || 0) >= 18) {
-    ctx.fillRect(x + dir * 10, y - 22, dir * 4, 34);
-    ctx.fillStyle = weaponColor;
-    ctx.fillRect(x + dir * 12, y - 28, dir * 10, 8);
-    ctx.fillRect(x + dir * 14, y - 22, dir * 4, 12);
+    drawPixelBlock(ctx, 16, -47 + Math.round(attack * 4), 5, 42, "#7a6040");
+    drawPixelBlock(ctx, 18, -55 + Math.round(attack * 4), 12, 14, weaponColor);
+    drawPixelBlock(ctx, 20, -42 + Math.round(attack * 4), 5, 17, lightenColor(weaponColor, 0.25));
   } else {
-    ctx.fillRect(x + dir * 8, y - 14, dir * 20, 3);
-    ctx.fillStyle = weaponColor;
-    ctx.fillRect(x + dir * 25, y - 17, dir * 5, 9);
-  }
-
-  drawPixelText(ctx, unit.name, x, y + 26, "#ffd56a", 10, "center");
-}
-
-function drawWeaponByType(ctx, x, y, unit, dir, color) {
-  const weaponX = dir > 0 ? x + 9 : x - 13;
-
-  if (unit.type === "infantry") {
-    // 剑 + 盾
-    // 剑
-    ctx.fillStyle = "#d0d0d0";
-    ctx.fillRect(weaponX, y - 6, dir * 4, 2);
-    ctx.fillRect(weaponX + dir * 3, y - 8, dir * 2, 6);
-    // 盾
-    ctx.fillStyle = "#8a7a60";
-    ctx.fillRect(x - dir * 12, y - 8, 5, 16);
-    ctx.fillStyle = color;
-    ctx.fillRect(x - dir * 11, y - 6, 3, 12);
-  } else if (unit.type === "pikeman") {
-    // 长枪
-    ctx.fillStyle = "#8a7050";
-    ctx.fillRect(weaponX - dir * 2, y - 8, dir * 20, 2);
-    ctx.fillStyle = "#e0d0c0";
-    ctx.fillRect(weaponX + dir * 16, y - 10, dir * 2, 6);
-  } else if (unit.type === "archer") {
-    // 弓
-    ctx.fillStyle = "#8a6040";
-    ctx.fillRect(weaponX - dir * 2, y - 10, dir * 2, 10);
-    ctx.fillStyle = "#c0a080";
-    ctx.fillRect(weaponX, y - 14, dir * 6, 2);
-    // 弓弦
-    ctx.strokeStyle = "#e8d8c0";
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(weaponX + dir * 5, y - 14);
-    ctx.lineTo(weaponX + dir * 5, y - 8);
-    ctx.stroke();
-  } else if (unit.type === "cavalry") {
-    // 骑枪 + 马身
-    ctx.fillStyle = "#6a4a28";
-    ctx.fillRect(x - 12, y + 5, 24, 10);
-    ctx.fillRect(x - 10, y + 8, 20, 6);
-    ctx.fillStyle = "#4a2a10";
-    ctx.fillRect(x - 12, y + 14, 4, 4);
-    ctx.fillRect(x + 8, y + 14, 4, 4);
-    // 马头
-    ctx.fillStyle = "#5a3a18";
-    ctx.fillRect(x + dir * 12, y - 2, dir * 6, 9);
-    // 骑枪
-    ctx.fillStyle = "#7a6040";
-    ctx.fillRect(weaponX, y - 4, dir * 22, 2);
-    ctx.fillStyle = "#e8d0b0";
-    ctx.fillRect(weaponX + dir * 20, y - 6, dir * 2, 6);
-    // 马鬃
-    ctx.fillStyle = "#3a2010";
-    ctx.fillRect(x + dir * 2, y + 6, 2, 6);
-  } else if (unit.type === "mage") {
-    // 法杖
-    ctx.fillStyle = "#5a3a5a";
-    ctx.fillRect(x - dir * 4, y - 12, 3, 24);
-    // 法球
-    const glow = Math.sin(Date.now() / 500 + x) * 0.3 + 0.7;
-    ctx.fillStyle = `rgba(180,100,220,${glow})`;
-    ctx.fillRect(x - dir * 4 - 3, y - 18, 10, 8);
-    ctx.fillStyle = `rgba(220,160,255,${glow * 0.6})`;
-    ctx.fillRect(x - dir * 4 - 1, y - 16, 6, 4);
+    drawPixelBlock(ctx, 14, -31 + Math.round(attack * 5), 34, 4, "#8a7050");
+    drawPixelBlock(ctx, 44, -35 + Math.round(attack * 5), 7, 11, weaponColor);
+    drawPixelBlock(ctx, 18, -35, 4, 12, palette.trim);
   }
 }
 
-function drawDeadUnit(ctx, x, y, unit) {
-  // 卧倒的身体
-  ctx.fillStyle = unit.color;
-  ctx.fillRect(x - 13, y + 7, 26, 8);
-  // 头横过来
-  ctx.fillStyle = "#e8d5b7";
-  ctx.fillRect(x + 6, y + 3, 8, 6);
-  // 掉落的头盔
-  ctx.fillStyle = "#555";
-  ctx.fillRect(x - 10, y + 3, 6, 4);
-  // X 眼
-  ctx.fillStyle = "#0a0603";
-  ctx.fillRect(x + 8, y + 4, 1, 3);
-  ctx.fillRect(x + 7, y + 5, 3, 1);
+function drawPremiumBackBanner(ctx, unit, palette, x, y, h) {
+  if (Math.floor(unit.stackLevel || 1) < 4) {
+    return;
+  }
+  drawPixelBlock(ctx, x, y, 2, h, palette.leather);
+  drawPixelBlock(ctx, x + 2, y + 1, 12, 8, palette.trim);
+  drawPixelBlock(ctx, x + 4, y + 3, 7, 2, "rgba(255,255,255,0.26)");
+}
+
+function drawPremiumLevelAccent(ctx, unit, palette) {
+  const level = Math.floor(unit.stackLevel || 1);
+  if (level < 3) {
+    return;
+  }
+  drawPixelBlock(ctx, -9, -35, 18, 2, level >= 5 ? palette.trim : palette.metal);
+  if (level >= 5) {
+    drawPixelBlock(ctx, -2, -39, 4, 4, palette.trim);
+  }
+}
+
+function drawPremiumSkillAura(ctx, unit, palette, ratio, time) {
+  const radius = unit.type === "cavalry" ? 34 : unit.general ? 30 : 24;
+  ctx.save();
+  ctx.globalAlpha *= ratio * 0.65;
+  ctx.strokeStyle = palette.glow;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-radius, -Math.round(radius * 0.72), radius * 2, Math.round(radius * 1.15));
+  for (let i = 0; i < 6; i += 1) {
+    const a = time * 5 + i * Math.PI / 3;
+    drawPixelBlock(ctx, Math.cos(a) * radius - 1, Math.sin(a) * radius * 0.45 - 22, 3, 3, palette.glow);
+  }
+  ctx.restore();
+}
+
+function drawPremiumHitFlash(ctx, unit) {
+  const alpha = clamp((unit.hitFlash || 0) / 0.18, 0, 1) * 0.58;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.fillStyle = "#ffffff";
+  if (unit.type === "cavalry") {
+    ctx.fillRect(-26, -27, 55, 35);
+  } else if (unit.general) {
+    ctx.fillRect(-18, -60, 36, 66);
+  } else {
+    ctx.fillRect(-18, -51, 36, 55);
+  }
+  ctx.restore();
+}
+
+function drawPremiumDeadUnit(ctx, x, y, unit) {
+  const palette = getPremiumBattlePalette(unit);
+  const dir = unit.dir || 1;
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y + 4));
+  ctx.scale(dir, 1);
+
+  if (unit.type === "cavalry") {
+    drawPixelBlock(ctx, -27, -10, 49, 12, palette.horseDark);
+    drawPixelBlock(ctx, -21, -16, 37, 10, palette.horse);
+    drawPixelBlock(ctx, 12, -19, 14, 10, palette.horse);
+    drawPixelBlock(ctx, -2, -29, 17, 12, palette.base);
+    drawPixelBlock(ctx, 8, -23, 32, 3, "#8a7050");
+  } else {
+    drawPixelBlock(ctx, -17, -7, 34, 10, palette.dark);
+    drawPixelBlock(ctx, -14, -11, 25, 12, palette.base);
+    drawPixelBlock(ctx, 8, -15, 11, 8, palette.skin);
+    drawPixelBlock(ctx, -21, -14, 10, 6, palette.metalDark);
+    drawPixelBlock(ctx, -5, -1, 31, 3, palette.leather);
+  }
+
+  drawPixelBlock(ctx, 11, -13, 2, 5, "#0a0603");
+  drawPixelBlock(ctx, 9, -11, 6, 1, "#0a0603");
+  ctx.restore();
+}
+
+function drawPixelBlock(ctx, x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
 }
 
 function darkenColor(hex, amount) {
@@ -1119,6 +1328,16 @@ function darkenColor(hex, amount) {
   const dg = Math.round(g * (1 - amount));
   const db = Math.round(b * (1 - amount));
   return "#" + [dr, dg, db].map((c) => c.toString(16).padStart(2, "0")).join("");
+}
+
+function lightenColor(hex, amount) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lr = Math.round(r + (255 - r) * amount);
+  const lg = Math.round(g + (255 - g) * amount);
+  const lb = Math.round(b + (255 - b) * amount);
+  return "#" + [lr, lg, lb].map((c) => c.toString(16).padStart(2, "0")).join("");
 }
 
 // ==================== 战斗特效 ====================
