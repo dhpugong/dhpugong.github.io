@@ -768,3 +768,11 @@ export const RESOURCE_TEMPLATES = [
   { id: "jadefarm", name: "青岚牧场", kind: "farm", x: 2360, y: 5180, owner: "neutral", income: RESOURCE_INCOME.jadefarm, captureTime: 3.2 },
   { id: "ravenquarry", name: "玄岩采石场", kind: "mine", x: 3600, y: 5260, owner: "neutral", income: RESOURCE_INCOME.ravenquarry, captureTime: 4.5 }
 ];
+
+export const TELEPORTER_TEMPLATES = [
+  { id: "star_grove", name: "星环林地", x: 450, y: 620 },
+  { id: "north_star", name: "北境星门", x: 1660, y: 560 },
+  { id: "eastern_star", name: "东原星门", x: 4100, y: 2300 },
+  { id: "south_star", name: "南境星门", x: 2500, y: 5000 },
+  { id: "mist_star", name: "雾港星门", x: 5400, y: 5100 }
+];

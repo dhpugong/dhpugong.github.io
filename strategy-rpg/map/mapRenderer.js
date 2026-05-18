@@ -389,6 +389,10 @@ function drawObjectLayer(ctx, game) {
     drawResourceOnMap(ctx, game, resource);
   }
 
+  for (const teleporter of map.teleporters || []) {
+    drawTeleporterOnMap(ctx, game, teleporter);
+  }
+
   for (const town of map.towns || []) {
     drawTownOnMap(ctx, game, town);
   }
@@ -638,6 +642,51 @@ function drawResourceOnMap(ctx, game, resource) {
     }
   }
   drawMapNameplate(ctx, resource.name, sx, sy + 20, color, 86);
+}
+
+function drawTeleporterOnMap(ctx, game, teleporter) {
+  const sx = Math.round(teleporter.x - game.camera.x);
+  const sy = Math.round(teleporter.y - game.camera.y);
+  if (sx < -58 || sy < -58 || sx > game.camera.width + 58 || sy > game.camera.height + 58) return;
+
+  const pulse = Math.sin(Date.now() / 420 + teleporter.x * 0.01) * 0.5 + 0.5;
+  const glow = 0.16 + pulse * 0.16;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.fillRect(sx - 20, sy + 17, 40, 7);
+  ctx.strokeStyle = `rgba(125,243,255,${0.58 + pulse * 0.28})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(sx, sy, 20, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,213,106,0.85)";
+  ctx.lineWidth = 2;
+  drawStarPath(ctx, sx, sy, 14, 6);
+  ctx.stroke();
+  ctx.fillStyle = `rgba(125,243,255,${glow})`;
+  ctx.beginPath();
+  ctx.arc(sx, sy, 24, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#ffd56a";
+  ctx.fillRect(sx - 2, sy - 2, 4, 4);
+  drawMapNameplate(ctx, teleporter.name, sx, sy + 23, "#7df3ff", 92);
+  ctx.restore();
+}
+
+function drawStarPath(ctx, cx, cy, outerRadius, innerRadius) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i += 1) {
+    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+    const angle = -Math.PI / 2 + i * Math.PI / 5;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  ctx.closePath();
 }
 
 function drawMapNameplate(ctx, text, x, y, color, maxWidth) {

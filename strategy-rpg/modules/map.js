@@ -1,4 +1,4 @@
-import { CONFIG, RESOURCE_TEMPLATES, TERRAIN, TOWN_TEMPLATES } from "./config.js";
+import { CONFIG, RESOURCE_TEMPLATES, TELEPORTER_TEMPLATES, TERRAIN, TOWN_TEMPLATES } from "./config.js";
 import { applyRandomGeneralAttributes } from "./generals.js";
 import { deepClone, distanceXY, rand, randInt } from "./utils.js";
 
@@ -47,7 +47,7 @@ export function createWorldMap() {
   carveRoad(tiles, 13, 13, 20, 16);
 
   // 让城池周围总是可通行，避免交互点刷在水里或山上。
-  for (const point of [...TOWN_TEMPLATES, ...RESOURCE_TEMPLATES]) {
+  for (const point of [...TOWN_TEMPLATES, ...RESOURCE_TEMPLATES, ...TELEPORTER_TEMPLATES]) {
     carveSafeArea(
       tiles,
       Math.floor(point.x / CONFIG.tileSize),
@@ -69,6 +69,7 @@ export function createWorldMap() {
       return town;
     }),
     resources: deepClone(RESOURCE_TEMPLATES),
+    teleporters: deepClone(TELEPORTER_TEMPLATES),
     decorations: createDecorations(cols, rows, tiles)
   };
 }
@@ -352,6 +353,19 @@ export function findNearestResource(map, x, y, maxDistance = Infinity) {
     const d = distanceXY(x, y, resource.x, resource.y);
     if (d < bestDistance) {
       best = resource;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
+export function findNearestTeleporter(map, x, y, maxDistance = Infinity) {
+  let best = null;
+  let bestDistance = maxDistance;
+  for (const teleporter of map.teleporters || []) {
+    const d = distanceXY(x, y, teleporter.x, teleporter.y);
+    if (d < bestDistance) {
+      best = teleporter;
       bestDistance = d;
     }
   }

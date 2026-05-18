@@ -178,6 +178,9 @@ export function applySaveToGame(game, data) {
       resource.income = RESOURCE_INCOME[resource.id];
     }
   });
+  if (!Array.isArray(freshMap.teleporters)) {
+    freshMap.teleporters = [];
+  }
   game.map = freshMap;
   game.player = data.player || createPlayer();
   normalizeFacing(game.player);

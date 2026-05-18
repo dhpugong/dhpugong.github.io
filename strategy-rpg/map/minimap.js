@@ -169,6 +169,14 @@ function drawMiniMapMarkers(ctx, game, content, view) {
     labels.push({ text: resource.name, x: p.x, y: p.y + 7, color, maxWidth: 54 });
   }
 
+  for (const teleporter of game.map.teleporters || []) {
+    if (!worldInView(teleporter, view, 64)) continue;
+    if (!isWorldPointDiscovered(game.fog, teleporter.x, teleporter.y)) continue;
+    const p = worldToMiniMap(teleporter.x, teleporter.y, content, view);
+    drawMiniMapTeleporterMarker(ctx, p.x, p.y);
+    labels.push({ text: teleporter.name, x: p.x, y: p.y + 9, color: "#7df3ff", maxWidth: 58 });
+  }
+
   for (const npc of game.npcs || []) {
     if (!worldInView(npc, view, npc.stationed ? 82 : 50)) continue;
     if (!isWorldPointDiscovered(game.fog, npc.x, npc.y)) continue;
@@ -275,6 +283,7 @@ function drawMiniMapLegend(ctx, layout) {
   ctx.fillRect(x + 18, y, 6, 6);
   ctx.fillStyle = "#7df3ff";
   ctx.fillRect(x + 36, y, 6, 6);
+  drawMiniMapTeleporterMarker(ctx, x + 57, y + 3, 4);
 }
 
 function drawMarker(ctx, x, y, color, size, shape) {
@@ -315,6 +324,45 @@ function drawMarker(ctx, x, y, color, size, shape) {
     ctx.fillRect(Math.round(x - size), Math.round(y - size), size * 2, size * 2);
   }
   ctx.restore();
+}
+
+function drawMiniMapTeleporterMarker(ctx, x, y, size = 5) {
+  ctx.save();
+  ctx.shadowColor = "#7df3ff";
+  ctx.shadowBlur = 7;
+  ctx.strokeStyle = "rgba(0,0,0,0.82)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, size + 1.5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "#7df3ff";
+  ctx.lineWidth = 1.25;
+  ctx.beginPath();
+  ctx.arc(x, y, size + 0.5, 0, Math.PI * 2);
+  ctx.stroke();
+  drawFivePointStarPath(ctx, x, y, size * 0.78, size * 0.34);
+  ctx.fillStyle = "rgba(255,213,106,0.22)";
+  ctx.fill();
+  ctx.strokeStyle = "#ffd56a";
+  ctx.lineWidth = 1.15;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawFivePointStarPath(ctx, cx, cy, outerRadius, innerRadius) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i += 1) {
+    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+    const angle = -Math.PI / 2 + i * Math.PI / 5;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  ctx.closePath();
 }
 
 function drawMiniMapLabel(ctx, text, x, y, color, maxWidth, content) {

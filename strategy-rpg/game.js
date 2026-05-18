@@ -2,7 +2,7 @@ import { createInitialNpcs, growFactionTowns, spawnWildIfNeeded, updateNpcs } fr
 import { finishBattle, fleeBattle, orderBattleAttack, startBattle, toggleBattlePause, updateBattle } from "./modules/battle.js";
 import { CONFIG } from "./modules/config.js";
 import { consumeClick, consumeDoubleClick, consumeKey, consumeTextInput, createInput, getMovementVector } from "./modules/input.js";
-import { clampToMap, ensurePassablePosition, findNearestResource, findNearestTown, findSafeStep, getTile, isPassable } from "./modules/map.js";
+import { clampToMap, ensurePassablePosition, findNearestResource, findNearestTeleporter, findNearestTown, findSafeStep, getTile, isPassable } from "./modules/map.js";
 import { setNotice as assignNotice, updateNotice as advanceNotice } from "./modules/notice.js";
 import { createPlayer, processNewDay, refreshOwnedResources, refreshOwnedTowns } from "./modules/player.js";
 import { handlePrivilegeInput as processPrivilegeInput, redeemPrivilegeCode as redeemPrivilege } from "./modules/privilege.js";
@@ -51,6 +51,7 @@ var game = {
   activeTown: null,
   nearTown: null,
   nearResource: null,
+  nearTeleporter: null,
   capturingResource: null,
   battle: null,
   pendingEncounter: null,
@@ -331,6 +332,10 @@ function handleUiClick(click) {
     beginResourceCapture();
     return true;
   }
+  if (button.action && button.action.indexOf("teleportTo:") === 0) {
+    teleportTo(button.action.slice("teleportTo:".length));
+    return true;
+  }
   if (button.action === "autoPathDestination") {
     startAutoPathToDestination();
     return true;
@@ -558,6 +563,8 @@ function handleWorldInteractions() {
 
   var nearResource = nearTown ? null : findNearestResource(game.map, game.player.x, game.player.y, CONFIG.interactDistance);
   game.nearResource = nearResource || null;
+  var nearTeleporter = nearTown || nearResource ? null : findNearestTeleporter(game.map, game.player.x, game.player.y, CONFIG.interactDistance);
+  game.nearTeleporter = nearTeleporter || null;
 
   // 待处理的遭遇
   if (game.pendingEncounter) {
@@ -629,6 +636,31 @@ function openEncounter(enemy) {
   game.state = "encounter";
   game.message = "遭遇 " + enemy.name;
   updateTutorial(game, { type: "encounter" });
+}
+
+function teleportTo(targetId) {
+  if (!game.nearTeleporter || !targetId) {
+    return;
+  }
+  var target = (game.map.teleporters || []).find(function (teleporter) {
+    return teleporter.id === targetId;
+  });
+  if (!target || target.id === game.nearTeleporter.id) {
+    return;
+  }
+  clearUnitPath(game.player);
+  game.capturingResource = null;
+  game.player.x = target.x + 28;
+  game.player.y = target.y;
+  ensurePassablePosition(game.map, game.player);
+  clampToMap(game.map, game.player);
+  updateFogOfWar(game.fog, game.map, game.player, true);
+  focusCameraOn(game.camera, game.player.x, game.player.y, game.map, true);
+  game.nearTown = null;
+  game.nearResource = null;
+  game.nearTeleporter = target;
+  game.message = "传送至 " + target.name;
+  setNotice("星门传送", [target.name], 1.6, "gold");
 }
 
 function acceptEncounter() {
@@ -709,6 +741,7 @@ function loadIntoCurrentGame(source, slotIndex) {
   clearUnitPath(game.player);
   game.nearTown = null;
   game.nearResource = null;
+  game.nearTeleporter = null;
   game.capturingResource = null;
   game.encounter = null;
   if (game.ui) {
@@ -754,6 +787,7 @@ function startNewGame() {
   game.activeTown = null;
   game.nearTown = null;
   game.nearResource = null;
+  game.nearTeleporter = null;
   game.capturingResource = null;
   game.battle = null;
   game.pendingEncounter = null;

@@ -74,6 +74,7 @@ export function handleUiAction(game, action) {
     game.activeTown = null;
     game.nearTown = null;
     game.nearResource = null;
+    game.nearTeleporter = null;
     game.capturingResource = null;
     game.battle = null;
     game.pendingEncounter = null;

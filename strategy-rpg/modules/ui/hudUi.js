@@ -38,6 +38,7 @@ export function drawHud(ctx, game) {
 
   drawNearbyTownActions(ctx, game);
   drawNearbyResourceActions(ctx, game);
+  drawNearbyTeleporterActions(ctx, game);
   drawCaptureProgress(ctx, game);
   drawQuestTracker(ctx, game);
   drawWarReports(ctx, game);
@@ -128,7 +129,9 @@ export function drawQuestTracker(ctx, game) {
     ? "处理附近城镇：" + game.nearTown.name
     : game.nearResource
       ? "占领资源点：" + game.nearResource.name
-      : game.player.target
+      : game.nearTeleporter
+        ? "使用传送阵：" + game.nearTeleporter.name
+        : game.player.target
         ? "行军至标记地点"
         : "探索大陆并扩张势力";
 
@@ -290,6 +293,30 @@ export function drawNearbyResourceActions(ctx, game) {
   const disabled = resource.owner === "player";
   const captureButton = addButton(game.ui, panelX + 54, panelY + 48, 108, 28, "占领", "captureNearbyResource", disabled);
   drawButton(ctx, captureButton, game.input);
+}
+
+export function drawNearbyTeleporterActions(ctx, game) {
+  if (!game.nearTeleporter || game.state !== "world") return;
+  const portals = (game.map.teleporters || []).filter(function (teleporter) {
+    return teleporter.id !== game.nearTeleporter.id;
+  });
+  if (!portals.length) return;
+
+  const panelX = 306;
+  const panelY = 382;
+  const panelW = 348;
+  const visible = portals.slice(0, 4);
+  const panelH = 72 + Math.ceil(visible.length / 2) * 36;
+  drawPanel(ctx, panelX, panelY, panelW, panelH, game.nearTeleporter.name);
+  drawPixelText(ctx, "选择目标星门", panelX + 20, panelY + 24, "#7df3ff", 13);
+  visible.forEach(function (teleporter, index) {
+    const col = index % 2;
+    const row = Math.floor(index / 2);
+    const x = panelX + 20 + col * 156;
+    const y = panelY + 50 + row * 36;
+    const button = addButton(game.ui, x, y, 136, 28, teleporter.name, "teleportTo:" + teleporter.id);
+    drawButton(ctx, button, game.input);
+  });
 }
 
 export function drawCaptureProgress(ctx, game) {

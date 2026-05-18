@@ -457,6 +457,13 @@ function drawWorldEntities(ctx, game, state) {
     drawMapMarker(ctx, p.x, p.y, color, 5, "diamond");
     drawWorldMapLabel(ctx, resource.name, p.x, p.y + 12, color, 76);
   }
+  for (const teleporter of game.map.teleporters || []) {
+    if (!isWorldPointDiscovered(game.fog, teleporter.x, teleporter.y)) continue;
+    const p = worldToScreenMap(state, game.map, teleporter.x, teleporter.y);
+    if (!rectContains(WORLD_MAP_RECT, p.x, p.y)) continue;
+    drawWorldMapTeleporterMarker(ctx, p.x, p.y);
+    drawWorldMapLabel(ctx, teleporter.name, p.x, p.y + 14, "#7df3ff", 82);
+  }
   for (const npc of game.npcs || []) {
     if (!isWorldPointDiscovered(game.fog, npc.x, npc.y)) continue;
     const p = worldToScreenMap(state, game.map, npc.x, npc.y);
@@ -589,6 +596,47 @@ function drawMapMarker(ctx, x, y, color, size, shape) {
     ctx.fillRect(Math.round(x - size), Math.round(y - size), size * 2, size * 2);
   }
   ctx.restore();
+}
+
+function drawWorldMapTeleporterMarker(ctx, x, y) {
+  ctx.save();
+  ctx.shadowColor = "#7df3ff";
+  ctx.shadowBlur = 10;
+  ctx.strokeStyle = "rgba(0,0,0,0.82)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x, y, 10, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "#7df3ff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, 8.5, 0, Math.PI * 2);
+  ctx.stroke();
+  drawFivePointStarPath(ctx, x, y, 6, 2.7);
+  ctx.fillStyle = "rgba(255,213,106,0.18)";
+  ctx.fill();
+  ctx.strokeStyle = "#ffd56a";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = "#ffd56a";
+  ctx.fillRect(Math.round(x - 1), Math.round(y - 1), 2, 2);
+  ctx.restore();
+}
+
+function drawFivePointStarPath(ctx, cx, cy, outerRadius, innerRadius) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i += 1) {
+    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+    const angle = -Math.PI / 2 + i * Math.PI / 5;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  ctx.closePath();
 }
 
 function drawWorldMapLabel(ctx, text, x, y, color, maxWidth) {
