@@ -42,12 +42,12 @@ export const CONFIG = {
 };
 
 export const TERRAIN = {
-  grass: { id: 0, name: "草原", color: "#405d2a", passable: true, speed: 1 },
-  water: { id: 1, name: "水域", color: "#1e405d", passable: false, speed: 0 },
-  mountain: { id: 2, name: "山脉", color: "#334352", passable: false, speed: 0 },
-  road: { id: 3, name: "道路", color: "#8a6b3d", passable: true, speed: 1.2 },
-  forest: { id: 4, name: "森林", color: "#284727", passable: true, speed: 0.72 },
-  hill: { id: 5, name: "丘陵", color: "#6a5b38", passable: true, speed: 0.82 }
+  grass: { id: 0, name: "草原", color: "#557a37", passable: true, speed: 1 },
+  water: { id: 1, name: "水域", color: "#2f6f96", passable: false, speed: 0 },
+  mountain: { id: 2, name: "山脉", color: "#526d7a", passable: false, speed: 0 },
+  road: { id: 3, name: "道路", color: "#aa8248", passable: true, speed: 1.2 },
+  forest: { id: 4, name: "森林", color: "#3b6f36", passable: true, speed: 0.72 },
+  hill: { id: 5, name: "丘陵", color: "#837143", passable: true, speed: 0.82 }
 };
 
 export const FACTIONS = {

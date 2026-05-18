@@ -128,11 +128,11 @@ function drawCachedTile(ctx, map, terrain, x, y, size, col, row) {
 
   const speck = ((col * 31 + row * 17) % 11);
   const accent = ((col * 17 + row * 29) % 13);
-  ctx.fillStyle = "rgba(255,255,255,0.035)";
+  ctx.fillStyle = "rgba(255,255,255,0.055)";
   if (speck % 2 === 0) {
     ctx.fillRect(x + 4 + speck, y + 8, 7, 2);
   }
-  ctx.fillStyle = "rgba(0,0,0,0.09)";
+  ctx.fillStyle = "rgba(0,0,0,0.045)";
   ctx.fillRect(x + size - 1, y, 1, size);
   ctx.fillRect(x, y + size - 1, size, 1);
   drawTileGrain(ctx, x, y, size, col, row, terrain.id);
@@ -156,8 +156,8 @@ function drawCachedTile(ctx, map, terrain, x, y, size, col, row) {
 
 function drawTileGrain(ctx, x, y, size, col, row, terrainId) {
   const seed = col * 928371 + row * 68917;
-  const light = terrainId === TERRAIN.water.id ? "rgba(126,199,228,0.08)" : "rgba(255,238,190,0.055)";
-  const dark = terrainId === TERRAIN.water.id ? "rgba(0,0,0,0.1)" : "rgba(7,6,4,0.08)";
+  const light = terrainId === TERRAIN.water.id ? "rgba(156,219,244,0.13)" : "rgba(255,244,196,0.075)";
+  const dark = terrainId === TERRAIN.water.id ? "rgba(10,31,48,0.075)" : "rgba(24,20,12,0.052)";
   for (let i = 0; i < 3; i += 1) {
     const px = x + 3 + ((seed + i * 11) % (size - 7));
     const py = y + 4 + ((seed * 3 + i * 13) % (size - 8));
@@ -167,53 +167,53 @@ function drawTileGrain(ctx, x, y, size, col, row, terrainId) {
 }
 
 function drawGrassTile(ctx, x, y, size, speck, accent) {
-  ctx.fillStyle = "rgba(126,177,83,0.16)";
+  ctx.fillStyle = "rgba(165,207,94,0.2)";
   ctx.fillRect(x + 3, y + 5 + speck, 10, 2);
   ctx.fillRect(x + 18, y + 18 - (speck % 6), 8, 2);
-  ctx.fillStyle = "rgba(31,73,35,0.12)";
+  ctx.fillStyle = "rgba(44,92,40,0.1)";
   ctx.fillRect(x + 6 + (accent % 6), y + 24, 5, 2);
   ctx.fillRect(x + 17, y + 10 + (accent % 4), 2, 5);
   ctx.fillRect(x + 20, y + 12 + (speck % 3), 2, 4);
-  ctx.fillStyle = "rgba(239,218,133,0.08)";
+  ctx.fillStyle = "rgba(255,231,143,0.11)";
   if (accent % 3 === 0) {
     ctx.fillRect(x + 21, y + 6 + (speck % 5), 2, 2);
   }
 }
 
 function drawForestTile(ctx, x, y, size, col, row) {
-  ctx.fillStyle = "#1f3d22";
+  ctx.fillStyle = "#2e5b2d";
   ctx.fillRect(x + 2, y + 3, size - 4, size - 6);
-  ctx.fillStyle = "#325f32";
+  ctx.fillStyle = "#4d8542";
   for (let i = 0; i < 4; i += 1) {
     const px = x + 4 + ((col * 13 + row * 7 + i * 9) % 22);
     const py = y + 5 + ((row * 11 + i * 6) % 19);
     ctx.fillRect(px, py, 5, 6);
-    ctx.fillStyle = "#20351d";
+    ctx.fillStyle = "#2a4d27";
     ctx.fillRect(px + 1, py + 5, 3, 5);
-    ctx.fillStyle = "#3d743a";
+    ctx.fillStyle = "#5f984e";
   }
-  ctx.fillStyle = "rgba(138,220,105,0.18)";
+  ctx.fillStyle = "rgba(178,234,120,0.22)";
   ctx.fillRect(x + 6 + ((col + row) % 9), y + 4, 7, 2);
-  ctx.fillStyle = "rgba(0,0,0,0.16)";
+  ctx.fillStyle = "rgba(12,28,13,0.1)";
   ctx.fillRect(x + 3, y + size - 6, size - 6, 3);
 }
 
 function drawHillTile(ctx, x, y, size, col, row) {
-  ctx.fillStyle = "#756743";
+  ctx.fillStyle = "#8d7a4a";
   ctx.fillRect(x, y, size, size);
-  ctx.fillStyle = "rgba(255,238,170,0.09)";
+  ctx.fillStyle = "rgba(255,238,170,0.14)";
   ctx.fillRect(x + 3, y + 7 + ((col + row) % 8), size - 8, 3);
   ctx.fillRect(x + 7, y + 13 + ((col * 2 + row) % 7), size - 14, 2);
-  ctx.fillStyle = "rgba(0,0,0,0.12)";
+  ctx.fillStyle = "rgba(58,43,21,0.08)";
   ctx.fillRect(x + 8, y + 20, size - 10, 4);
-  ctx.fillStyle = "rgba(55,43,27,0.18)";
+  ctx.fillStyle = "rgba(82,61,31,0.13)";
   ctx.fillRect(x + 4 + ((col * 5 + row) % 13), y + 25, 5, 2);
 }
 
 function drawMountainTile(ctx, x, y, size, col, row) {
-  ctx.fillStyle = "#334352";
+  ctx.fillStyle = "#526d7a";
   ctx.fillRect(x, y, size, size);
-  ctx.fillStyle = "#263543";
+  ctx.fillStyle = "#3d5967";
   ctx.fillRect(x, y + size - 7, size, 7);
 
   const mainShift = ((col * 7 + row * 5) % 9) - 4;
@@ -223,7 +223,7 @@ function drawMountainTile(ctx, x, y, size, col, row) {
   const leftPeakX = x + 8 + leftShift;
   const rightPeakX = x + size - 8 + rightShift;
 
-  ctx.fillStyle = "#1f2b38";
+  ctx.fillStyle = "#344a58";
   ctx.beginPath();
   ctx.moveTo(x + 2, y + size);
   ctx.lineTo(leftPeakX, y + 10);
@@ -231,7 +231,7 @@ function drawMountainTile(ctx, x, y, size, col, row) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#263746";
+  ctx.fillStyle = "#405d6c";
   ctx.beginPath();
   ctx.moveTo(x + 13, y + size);
   ctx.lineTo(mainPeakX, y + 2);
@@ -239,7 +239,7 @@ function drawMountainTile(ctx, x, y, size, col, row) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#3f5869";
+  ctx.fillStyle = "#668596";
   ctx.beginPath();
   ctx.moveTo(x + 8, y + size - 1);
   ctx.lineTo(mainPeakX, y + 4);
@@ -247,7 +247,7 @@ function drawMountainTile(ctx, x, y, size, col, row) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#1a2632";
+  ctx.fillStyle = "#314555";
   ctx.beginPath();
   ctx.moveTo(x + 19, y + size);
   ctx.lineTo(rightPeakX, y + 8);
@@ -255,7 +255,7 @@ function drawMountainTile(ctx, x, y, size, col, row) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#6f8898";
+  ctx.fillStyle = "#8ca9b8";
   ctx.beginPath();
   ctx.moveTo(Math.round(mainPeakX) - 1, y + 5);
   ctx.lineTo(Math.round(mainPeakX) + 5, y + 17);
@@ -264,25 +264,25 @@ function drawMountainTile(ctx, x, y, size, col, row) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#9fb7c6";
+  ctx.fillStyle = "#d0e1e7";
   ctx.fillRect(Math.round(mainPeakX) - 4, y + 4, 8, 2);
   ctx.fillRect(Math.round(mainPeakX) - 2, y + 7, 4, 2);
   ctx.fillRect(Math.round(leftPeakX) - 3, y + 11, 5, 2);
 
-  ctx.fillStyle = "rgba(218,238,246,0.18)";
+  ctx.fillStyle = "rgba(234,247,250,0.22)";
   ctx.fillRect(x + 6, y + size - 11, 7, 2);
   ctx.fillRect(x + 21, y + size - 14, 5, 2);
-  ctx.fillStyle = "rgba(0,0,0,0.16)";
+  ctx.fillStyle = "rgba(20,34,44,0.11)";
   ctx.fillRect(x + size - 6, y + 13, 3, size - 16);
   ctx.fillRect(x + 2, y + size - 4, size - 4, 3);
 }
 
 function drawWaterTile(ctx, x, y, size, col, row) {
-  ctx.fillStyle = "#173650";
+  ctx.fillStyle = "#2d6e96";
   ctx.fillRect(x, y, size, size);
-  ctx.fillStyle = "rgba(92,156,194,0.13)";
+  ctx.fillStyle = "rgba(149,216,244,0.2)";
   ctx.fillRect(x + 2, y + 6 + ((col * 3 + row * 5) % 18), size - 4, 2);
-  ctx.fillStyle = "rgba(10,22,38,0.18)";
+  ctx.fillStyle = "rgba(14,54,82,0.12)";
   ctx.fillRect(x, y + size - 5, size, 5);
 }
 
@@ -294,28 +294,28 @@ function drawRoadTile(ctx, map, x, y, size, col, row) {
   const hasConnection = north || south || west || east;
   const mid = Math.round(size / 2);
 
-  ctx.fillStyle = "#5f6f38";
+  ctx.fillStyle = "#6f8a45";
   ctx.fillRect(x, y, size, size);
-  ctx.fillStyle = "rgba(126,177,83,0.14)";
+  ctx.fillStyle = "rgba(174,210,96,0.17)";
   ctx.fillRect(x + 4, y + 5 + ((col + row) % 9), 8, 2);
 
-  ctx.fillStyle = "#806238";
+  ctx.fillStyle = "#9f7542";
   ctx.fillRect(x + mid - 6, y + mid - 6, 12, 12);
   if (!hasConnection || north) ctx.fillRect(x + mid - 5, y, 10, mid);
   if (!hasConnection || south) ctx.fillRect(x + mid - 5, y + mid, 10, mid);
   if (!hasConnection || west) ctx.fillRect(x, y + mid - 5, mid, 10);
   if (!hasConnection || east) ctx.fillRect(x + mid, y + mid - 5, mid, 10);
 
-  ctx.fillStyle = "#9a7a48";
+  ctx.fillStyle = "#be9252";
   ctx.fillRect(x + mid - 4, y + mid - 4, 8, 8);
   if (!hasConnection || north) ctx.fillRect(x + mid - 3, y, 6, mid);
   if (!hasConnection || south) ctx.fillRect(x + mid - 3, y + mid, 6, mid);
   if (!hasConnection || west) ctx.fillRect(x, y + mid - 3, mid, 6);
   if (!hasConnection || east) ctx.fillRect(x + mid, y + mid - 3, mid, 6);
 
-  ctx.fillStyle = "rgba(255,226,160,0.15)";
+  ctx.fillStyle = "rgba(255,232,166,0.2)";
   ctx.fillRect(x + 3 + ((col + row) % 9), y + size / 2 - 2, 7, 2);
-  ctx.fillStyle = "rgba(46,31,18,0.18)";
+  ctx.fillStyle = "rgba(78,48,24,0.13)";
   for (let i = 0; i < 3; i += 1) {
     ctx.fillRect(x + 4 + ((col * 5 + row * 3 + i * 8) % 22), y + 9 + i * 6, 3, 2);
   }
@@ -328,7 +328,7 @@ function drawTerrainTransitions(ctx, map, terrain, x, y, size, col, row) {
   const east = getNeighborTerrain(map, col + 1, row);
 
   if (terrain.id !== TERRAIN.water.id && [north, south, west, east].includes(TERRAIN.water.id)) {
-    ctx.fillStyle = "rgba(128,199,228,0.18)";
+    ctx.fillStyle = "rgba(155,219,244,0.22)";
     if (north === TERRAIN.water.id) ctx.fillRect(x, y, size, 3);
     if (south === TERRAIN.water.id) ctx.fillRect(x, y + size - 3, size, 3);
     if (west === TERRAIN.water.id) ctx.fillRect(x, y, 3, size);
@@ -336,7 +336,7 @@ function drawTerrainTransitions(ctx, map, terrain, x, y, size, col, row) {
   }
 
   if (terrain.id !== TERRAIN.road.id && [north, south, west, east].includes(TERRAIN.road.id)) {
-    ctx.fillStyle = "rgba(183,139,79,0.16)";
+    ctx.fillStyle = "rgba(210,165,91,0.2)";
     if (north === TERRAIN.road.id) ctx.fillRect(x, y, size, 2);
     if (south === TERRAIN.road.id) ctx.fillRect(x, y + size - 2, size, 2);
     if (west === TERRAIN.road.id) ctx.fillRect(x, y, 2, size);
@@ -368,7 +368,7 @@ function drawAnimatedWater(ctx, game) {
       const x = Math.round(col * tileSize - camera.x);
       const y = Math.round(row * tileSize - camera.y);
       const waveY = (col * 5 + row * 3 + tick) % 24;
-      ctx.fillStyle = "rgba(128,199,228,0.16)";
+      ctx.fillStyle = "rgba(155,219,244,0.2)";
       ctx.fillRect(x + 4, y + waveY, tileSize - 8, 2);
     }
   }
@@ -1011,12 +1011,12 @@ function drawDirectionAccent(ctx, sx, sy, bob, facing, side, palette, isPlayer) 
 }
 
 function getMiniTerrainColor(id) {
-  if (id === TERRAIN.water.id) return "#235f8a";
-  if (id === TERRAIN.mountain.id) return "#5f788a";
-  if (id === TERRAIN.road.id) return "#b78b4f";
-  if (id === TERRAIN.forest.id) return "#2f7a3c";
-  if (id === TERRAIN.hill.id) return "#827044";
-  return "#4f8f3b";
+  if (id === TERRAIN.water.id) return "#337ba3";
+  if (id === TERRAIN.mountain.id) return "#7593a0";
+  if (id === TERRAIN.road.id) return "#c19152";
+  if (id === TERRAIN.forest.id) return "#43823d";
+  if (id === TERRAIN.hill.id) return "#9a854d";
+  return "#65a447";
 }
 
 function getMapCacheKey(map) {

@@ -17,13 +17,14 @@ export function createMiniMapState() {
 }
 
 export function drawMiniMap(ctx, game) {
-  if (game.state !== "world" || !game.mapUi) {
+  if (!game.mapUi) {
     return;
   }
   const state = game.mapUi.miniMap || createMiniMapState();
   game.mapUi.miniMap = state;
   const layout = getMiniMapLayout();
-  const hovered = rectContains(layout, game.input.mouse.x, game.input.mouse.y);
+  const interactive = game.state === "world";
+  const hovered = interactive && rectContains(layout, game.input.mouse.x, game.input.mouse.y);
   state.scale = lerp(state.scale || 1, hovered ? 1.045 : 1, 0.18);
   state.pulse += 0.035;
 

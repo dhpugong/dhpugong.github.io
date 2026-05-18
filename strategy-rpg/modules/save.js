@@ -10,6 +10,10 @@ import { deepClone } from "./utils.js";
 import { serializeFogOfWar } from "../map/fog.js";
 
 // 存档模块：使用 localStorage，支持自动存档、手动保存和读档。
+const SAVE_SLOT_COUNT = 3;
+const SAVE_SLOTS_KEY = CONFIG.saveKey + "-slots";
+const RESUME_SAVE_KEY = CONFIG.saveKey + "-resume";
+
 export function createFreshGameData() {
   const map = createWorldMap();
   const player = createPlayer();
@@ -21,26 +25,74 @@ export function createFreshGameData() {
   };
 }
 
-export function saveGame(game) {
-  const data = {
+function createSaveData(game) {
+  return {
     version: 1,
     savedAt: new Date().toISOString(),
     player: deepClone(game.player),
     towns: deepClone(game.map.towns),
     resources: deepClone(game.map.resources || []),
-    npcs: deepClone(game.npcs.filter((npc) => npc.alive)),
+    npcs: deepClone((game.npcs || []).filter((npc) => npc.alive)),
     log: deepClone(game.log.slice(0, 20)),
     reports: deepClone((game.reports || []).slice(0, 8)),
     fog: serializeFogOfWar(game.fog),
     elapsedDayTimer: game.elapsedDayTimer,
     wildSpawnTimer: game.wildSpawnTimer
   };
-  localStorage.setItem(CONFIG.saveKey, JSON.stringify(data));
+}
+
+export function saveGame(game, slotIndex) {
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= SAVE_SLOT_COUNT) {
+    return null;
+  }
+  const data = createSaveData(game);
+  const slots = getStoredSaveSlots();
+  slots[slotIndex] = data;
+  localStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify(slots));
   return data;
 }
 
-export function loadGameData() {
-  const raw = localStorage.getItem(CONFIG.saveKey);
+export function deleteSaveSlot(slotIndex) {
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= SAVE_SLOT_COUNT) {
+    return false;
+  }
+  const slots = getStoredSaveSlots();
+  const hasStoredSlots = slots.some(Boolean);
+  if (hasStoredSlots) {
+    slots[slotIndex] = null;
+    localStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify(slots));
+    return true;
+  }
+  if (slotIndex === 0 && localStorage.getItem(CONFIG.saveKey)) {
+    localStorage.removeItem(CONFIG.saveKey);
+    return true;
+  }
+  return false;
+}
+
+export function saveResumeGame(game) {
+  const data = createSaveData(game);
+  localStorage.setItem(RESUME_SAVE_KEY, JSON.stringify(data));
+  return data;
+}
+
+export function loadGameData(slotIndex) {
+  if (typeof slotIndex === "number") {
+    return getSaveSlots()[slotIndex] || null;
+  }
+  return getSaveSlots().find(Boolean) || null;
+}
+
+export function loadResumeGameData() {
+  return loadSaveDataByKey(RESUME_SAVE_KEY) || loadLegacySaveData();
+}
+
+function loadLegacySaveData() {
+  return loadSaveDataByKey(CONFIG.saveKey);
+}
+
+function loadSaveDataByKey(key) {
+  const raw = localStorage.getItem(key);
   if (!raw) {
     return null;
   }
@@ -53,7 +105,50 @@ export function loadGameData() {
 }
 
 export function hasSave() {
-  return Boolean(localStorage.getItem(CONFIG.saveKey));
+  return getStoredSaveSlots().some(Boolean) || Boolean(localStorage.getItem(CONFIG.saveKey));
+}
+
+export function hasResumeGame() {
+  return Boolean(localStorage.getItem(RESUME_SAVE_KEY) || localStorage.getItem(CONFIG.saveKey));
+}
+
+export function getSaveSlots() {
+  const slots = getStoredSaveSlots();
+  if (slots.some(Boolean)) {
+    return slots;
+  }
+  const legacy = loadLegacySaveData();
+  if (legacy) {
+    slots[0] = legacy;
+  }
+  return slots;
+}
+
+function getStoredSaveSlots() {
+  const slots = createEmptySaveSlots();
+  const raw = localStorage.getItem(SAVE_SLOTS_KEY);
+  if (!raw) {
+    return slots;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return slots;
+    }
+    for (let i = 0; i < SAVE_SLOT_COUNT; i += 1) {
+      if (parsed[i] && parsed[i].version === 1) {
+        slots[i] = parsed[i];
+      }
+    }
+    return slots;
+  } catch (error) {
+    console.warn("读取存档槽失败", error);
+    return slots;
+  }
+}
+
+function createEmptySaveSlots() {
+  return new Array(SAVE_SLOT_COUNT).fill(null);
 }
 
 export function applySaveToGame(game, data) {
@@ -189,7 +284,6 @@ export function autoSaveIfNeeded(game, dt) {
   game.autoSaveTimer -= dt;
   if (game.autoSaveTimer <= 0) {
     game.autoSaveTimer = CONFIG.autoSaveInterval;
-    saveGame(game);
-    game.log.unshift("自动存档完成");
+    saveResumeGame(game);
   }
 }

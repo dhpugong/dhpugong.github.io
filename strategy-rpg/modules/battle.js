@@ -16,6 +16,16 @@ import { clamp, distanceXY, rand, randInt } from "./utils.js";
 // 战斗模块：横版自动战斗、阵型编排、技能释放和伤亡结算。
 
 const BATTLE_MOVE_SPEED_MULTIPLIER = 2;
+const BATTLE_HP_MULTIPLIER = 3;
+const BATTLE_ATTACK_SPEED_MULTIPLIER = 0.6;
+const ENEMY_ADVANCE_DELAY = 1;
+const FORMATION_FRONT_X = 278;
+const FORMATION_COLUMN_GAP = 38;
+const FORMATION_COLUMN_SIZE = 10;
+const FORMATION_ROW_START_Y = 104;
+const FORMATION_ROW_GAP = 16;
+const FORMATION_GENERAL_Y = 176;
+const FORMATION_TROOP_PRIORITY = ["infantry", "pikeman", "cavalry", "archer", "mage"];
 const EMPTY_WEAPON = {
   id: "none",
   name: "未装备",
@@ -60,14 +70,17 @@ function createBattleState({ player, enemy, enemyArmy, enemyName, enemyFaction, 
     logs: ["战斗开始：铁冠盟约 对阵 " + enemyName],
     effects: [],
     units: [],
-    casualties: { player: {}, enemy: {} }
+    casualties: { player: {}, enemy: {} },
+    playerAttackOrdered: false,
+    paused: false,
+    enemyAdvanceDelay: ENEMY_ADVANCE_DELAY
   };
 
   // 布置左军（玩家）
-  deployFormation(battle, player.army, "left", getPlayerBattleBonus(player));
+  deployFormation(battle, player.army, "left", getPlayerBattleBonus(player), Boolean(player.general));
   deployGeneral(battle, player.general, "left", getPlayerBattleBonus(player));
   // 布置右军（敌方）
-  deployFormation(battle, enemyArmy, "right", null);
+  deployFormation(battle, enemyArmy, "right", null, Boolean(enemy.general));
   deployGeneral(battle, enemy.general, "right", null);
 
   return battle;
@@ -82,14 +95,14 @@ function deployGeneral(battle, general, side, bonus) {
   const generalBonus = getGeneralBattleBonus(general);
   const dir = side === "left" ? 1 : -1;
   const level = general.level || 1;
-  const hp = Math.round((130 + level * 22 + weapon.defense * 8 + generalBonus.hp) * (bonus ? 1 + bonus.morale / 220 : 1));
+  const hp = Math.round((130 + level * 22 + weapon.defense * 8 + generalBonus.hp) * (bonus ? 1 + bonus.morale / 220 : 1) * BATTLE_HP_MULTIPLIER);
   battle.units.push({
     id: side + "-general-" + Math.random().toString(16).slice(2),
     side,
     type: "general",
     stackLevel: level,
-    x: side === "left" ? 108 : CONFIG.battleWidth - 108,
-    y: 160,
+    x: getFormationColumnX(side, 0),
+    y: FORMATION_GENERAL_Y,
     vx: 0,
     hp,
     maxHp: hp,
@@ -117,49 +130,33 @@ function deployGeneral(battle, general, side, bonus) {
   });
 }
 
-// 按兵种角色排阵：前排近战、后排远程
-function deployFormation(battle, army, side, bonus) {
+// 列阵规则：将领独立前排，士兵按兵种分列，每列最多 10 人。
+function deployFormation(battle, army, side, bonus, hasGeneral) {
   const dir = side === "left" ? 1 : -1;
-  const baseX = side === "left" ? 150 : CONFIG.battleWidth - 150;
+  const safeArmy = Array.isArray(army) ? army : [];
+  const troopTypes = getFormationTroopTypes(safeArmy);
+  let nextColumn = hasGeneral ? 1 : 0;
 
-  // 前排在靠近中心处，后排在后方
-  const roleOrder = ["infantry", "pikeman", "cavalry", "archer", "mage"];
-
-  const usedStacks = [];
-  for (const role of roleOrder) {
-    const stacks = army.filter((s) => s.type === role && s.count > 0);
-    for (const stack of stacks) {
-      usedStacks.push(stack);
+  for (const type of troopTypes) {
+    const soldiers = getFormationSoldiersByType(safeArmy, type);
+    if (!soldiers.length) {
+      continue;
     }
-  }
 
-  let rowIndex = 0;
-  for (const stack of usedStacks) {
-    const stats = getTroopBattleStats(stack);
-    const count = stack.count;
-    const laneCount = Math.min(6, Math.max(3, Math.ceil(Math.sqrt(count))));
-    const cols = Math.ceil(count / laneCount);
-    const isRanged = stats.range > 80;
-
-    // 远程放在后面几排
-    const rowOffset = isRanged ? rowIndex + 0.5 : rowIndex;
-
-    for (let i = 0; i < count; i += 1) {
-      const col = Math.floor(i / laneCount);
-      const lane = (i % laneCount) - (laneCount - 1) / 2;
-      const hp = Math.round(stats.hp * (bonus ? 1 + bonus.morale / 180 : 1));
-
-      // 错开位置避免重叠
-      const staggerX = (i % 2) * 6 * dir;
-      const staggerY = (col % 2) * 3;
+    for (let i = 0; i < soldiers.length; i += 1) {
+      const stack = soldiers[i];
+      const stats = getTroopBattleStats(stack);
+      const column = nextColumn + Math.floor(i / FORMATION_COLUMN_SIZE);
+      const row = i % FORMATION_COLUMN_SIZE;
+      const hp = Math.round(stats.hp * (bonus ? 1 + bonus.morale / 180 : 1) * BATTLE_HP_MULTIPLIER);
 
       battle.units.push({
         id: side + "-" + stack.type + "-lv" + stack.level + "-" + i + "-" + Math.random().toString(16).slice(2),
         side,
         type: stack.type,
         stackLevel: stack.level,
-        x: baseX - dir * col * 16 - dir * rowOffset * 12 + staggerX,
-        y: 160 + lane * 22 + rowOffset * 13 + staggerY,
+        x: getFormationColumnX(side, column),
+        y: getFormationRowY(row),
         vx: 0,
         hp,
         maxHp: hp,
@@ -185,13 +182,58 @@ function deployFormation(battle, army, side, bonus) {
       });
     }
 
-    rowIndex += Math.max(1, Math.ceil(cols / 2.5));
+    nextColumn += Math.ceil(soldiers.length / FORMATION_COLUMN_SIZE);
   }
+}
+
+function getFormationTroopTypes(army) {
+  const seen = new Set();
+  const ordered = [];
+  for (const type of FORMATION_TROOP_PRIORITY) {
+    if (army.some((stack) => stack.type === type && stack.count > 0)) {
+      seen.add(type);
+      ordered.push(type);
+    }
+  }
+  for (const stack of army) {
+    if (stack.count > 0 && !seen.has(stack.type)) {
+      seen.add(stack.type);
+      ordered.push(stack.type);
+    }
+  }
+  return ordered;
+}
+
+function getFormationSoldiersByType(army, type) {
+  const soldiers = [];
+  for (const stack of army) {
+    if (stack.type !== type || stack.count <= 0) {
+      continue;
+    }
+    for (let i = 0; i < stack.count; i += 1) {
+      soldiers.push(stack);
+    }
+  }
+  return soldiers;
+}
+
+function getFormationColumnX(side, column) {
+  const dir = side === "left" ? 1 : -1;
+  const front = side === "left" ? FORMATION_FRONT_X : CONFIG.battleWidth - FORMATION_FRONT_X;
+  return clamp(front - dir * column * FORMATION_COLUMN_GAP, 56, CONFIG.battleWidth - 56);
+}
+
+function getFormationRowY(row) {
+  return FORMATION_ROW_START_Y + row * FORMATION_ROW_GAP;
 }
 
 export function updateBattle(game, dt) {
   const battle = game.battle;
   if (!battle) return;
+
+  if (battle.paused && !battle.ended) {
+    return;
+  }
 
   battle.time += dt;
   updateEffects(battle, dt);
@@ -245,6 +287,30 @@ export function fleeBattle(game) {
   });
 }
 
+export function orderBattleAttack(game) {
+  const battle = game.battle;
+  if (!battle || battle.ended || battle.playerAttackOrdered) {
+    return false;
+  }
+  battle.playerAttackOrdered = true;
+  battle.logs.unshift("号角吹响，我军发起进攻！");
+  battle.effects.push({
+    type: "banner", x: 170, y: 140,
+    color: "#ffd56a", life: 0.55, maxLife: 0.55
+  });
+  return true;
+}
+
+export function toggleBattlePause(game) {
+  const battle = game.battle;
+  if (!battle || battle.ended) {
+    return false;
+  }
+  battle.paused = !battle.paused;
+  battle.logs.unshift(battle.paused ? "战斗暂停" : "战斗继续");
+  return true;
+}
+
 function updateBattleUnit(battle, unit, dt) {
   updateBattleAnimationTimers(unit, dt);
 
@@ -260,15 +326,16 @@ function updateBattleUnit(battle, unit, dt) {
   if (!target) return;
 
   const dist = Math.abs(target.x - unit.x);
+  const canAdvance = canUnitAdvance(battle, unit);
 
   // 移动至攻击范围
-  if (dist > unit.range * 0.9) {
+  if (canAdvance && dist > unit.range * 0.9) {
     unit.x += unit.dir * unit.speed * dt;
     unit.x = clamp(unit.x, 50, CONFIG.battleWidth - 50);
     unit.positioned = true;
   } else {
     // 微调位置，远程单位稍微后撤
-    if (unit.range > 70 && dist < unit.range * 0.4) {
+    if (canAdvance && unit.range > 70 && dist < unit.range * 0.4) {
       unit.x -= unit.dir * unit.speed * 0.4 * dt;
     }
     unit.positioned = true;
@@ -285,6 +352,13 @@ function updateBattleUnit(battle, unit, dt) {
     castSkill(battle, unit, target);
     unit.skillTimer = getSkillCooldown(unit.skill);
   }
+}
+
+function canUnitAdvance(battle, unit) {
+  if (unit.side === "right") {
+    return battle.time >= (battle.enemyAdvanceDelay || ENEMY_ADVANCE_DELAY);
+  }
+  return Boolean(battle.playerAttackOrdered);
 }
 
 function updateBattleAnimationTimers(unit, dt) {
@@ -371,6 +445,9 @@ function castSkill(battle, unit, target) {
     }
     battle.logs.unshift(skill.name + "：箭矢覆盖敌阵前排");
   } else if (skillId === "charge") {
+    if (!canUnitAdvance(battle, unit)) {
+      return;
+    }
     unit.x += unit.dir * 40;
     damageUnit(battle, target, Math.round(unit.attack * 1.7), unit.type);
     battle.effects.push({
@@ -381,7 +458,7 @@ function castSkill(battle, unit, target) {
   } else if (skillId === "warCry") {
     const allies = battle.units.filter((u) => u.side === unit.side && !u.dead);
     for (const ally of allies) {
-      ally.attackTimer = Math.min(ally.attackTimer, 0.2);
+      ally.attackTimer = Math.min(ally.attackTimer, 0.2 / BATTLE_ATTACK_SPEED_MULTIPLIER);
       ally.attack += 2;
     }
     battle.effects.push({
@@ -420,10 +497,11 @@ function updateEffects(battle, dt) {
 }
 
 function getAttackDelay(unit) {
-  if (unit.type === "cavalry") return 1.1;
-  if (unit.type === "archer") return 1.4;
-  if (unit.type === "mage") return 1.6;
-  return 1.0;
+  let delay = 1.0;
+  if (unit.type === "cavalry") delay = 1.1;
+  if (unit.type === "archer") delay = 1.4;
+  if (unit.type === "mage") delay = 1.6;
+  return delay / BATTLE_ATTACK_SPEED_MULTIPLIER;
 }
 
 function getSkillCooldown(skillId) {

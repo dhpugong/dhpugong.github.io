@@ -11,6 +11,32 @@ import { NUMBER_FONT_FAMILY, UI_FONT_FAMILY, drawBar, drawPanel, drawPixelText, 
 
 const QUEST_PANEL = { x: 706, y: 64, w: 238, h: 116 };
 const ARMY_GRID_LAYOUT = { x: 214, y: 156, cols: 10, rows: 7, cell: 42, gap: 7 };
+const UI_TEXT = {
+  main: "#f4e1aa",
+  body: "#ead59b",
+  muted: "#d7c286",
+  label: "#dfb866",
+  empty: "#b7a16a",
+  dim: "#a99563",
+  disabled: "#9a885e"
+};
+const BUTTON_THEME = {
+  shadow: "#23150a",
+  shadowPressed: "#120a04",
+  normal: "#6c4b2a",
+  hover: "#8a6236",
+  pressed: "#54381f",
+  disabled: "#5d523d",
+  light: "#c79d55",
+  lightHover: "#f0c96e",
+  lightDisabled: "#7a6b4d",
+  dark: "#2e1c0e",
+  darkPressed: "#1b0f06",
+  darkDisabled: "#3a2c1a",
+  text: "#ffe08a",
+  textHover: "#fff0b4",
+  textDisabled: "#a89462"
+};
 
 const EMPTY_WEAPON = {
   id: "none",
@@ -20,11 +46,11 @@ const EMPTY_WEAPON = {
   defense: 0,
   range: 30,
   crit: 0,
-  color: "#6f6048"
+  color: UI_TEXT.dim
 };
 
 const QUALITY_COLORS = {
-  none: "#6f6048",
+  none: UI_TEXT.dim,
   common: "#d8d2c6",
   uncommon: "#7fd184",
   rare: "#79b8ff",
@@ -92,20 +118,20 @@ export function drawButton(ctx, button, input) {
   const drawY = y + pressOffset;
 
   // 按钮底影
-  ctx.fillStyle = pressed ? "#080503" : "#110b05";
+  ctx.fillStyle = pressed ? BUTTON_THEME.shadowPressed : BUTTON_THEME.shadow;
   ctx.fillRect(x + 2, y + 2, w, h);
 
   // 主体
-  ctx.fillStyle = disabled ? "#3d3222" : pressed ? "#3e2a18" : hovered ? "#6a4628" : "#4a3520";
+  ctx.fillStyle = disabled ? BUTTON_THEME.disabled : pressed ? BUTTON_THEME.pressed : hovered ? BUTTON_THEME.hover : BUTTON_THEME.normal;
   ctx.fillRect(x, drawY, w, h);
 
   // 高光线
-  ctx.fillStyle = disabled ? "#5a4d3a" : hovered ? "#ffd56a" : "#8f682e";
+  ctx.fillStyle = disabled ? BUTTON_THEME.lightDisabled : hovered ? BUTTON_THEME.lightHover : BUTTON_THEME.light;
   ctx.fillRect(x, drawY, w, 2);
   ctx.fillRect(x, drawY, 2, h);
 
   // 暗线
-  ctx.fillStyle = disabled ? "#2a1f12" : pressed ? "#160d06" : "#2a1a0a";
+  ctx.fillStyle = disabled ? BUTTON_THEME.darkDisabled : pressed ? BUTTON_THEME.darkPressed : BUTTON_THEME.dark;
   ctx.fillRect(x, drawY + h - 2, w, 2);
   ctx.fillRect(x + w - 2, drawY, 2, h);
 
@@ -123,7 +149,7 @@ export function drawButton(ctx, button, input) {
   ctx.lineJoin = "round";
   ctx.strokeStyle = "rgba(3, 6, 8, 0.82)";
   ctx.strokeText(button.label, Math.round(x + w / 2), Math.round(drawY + h / 2));
-  ctx.fillStyle = disabled ? "#6b5d45" : hovered ? "#fff0a8" : "#ffd56a";
+  ctx.fillStyle = disabled ? BUTTON_THEME.textDisabled : hovered ? BUTTON_THEME.textHover : BUTTON_THEME.text;
   ctx.fillText(button.label, Math.round(x + w / 2), Math.round(drawY + h / 2));
 
   // 可用按钮光晕
@@ -152,13 +178,13 @@ export function drawHud(ctx, game) {
 
   drawPixelText(ctx, player.name, 78, 25, "#ffd56a", 16);
   drawPixelText(ctx, "Lv." + player.level, 176, 28, "#d6a84f", 12);
-  drawPixelText(ctx, "第 " + player.day + " 日", 226, 28, "#b9a77a", 12);
+  drawPixelText(ctx, "第 " + player.day + " 日", 226, 28, UI_TEXT.muted, 12);
 
   drawHudMetric(ctx, "金", formatNumber(player.gold), 78, 48, "#ffe6a6", 18);
   drawHudMetric(ctx, "兵", armySize + "/" + maxSize, 148, 48, "#d9f0ff", 18);
   drawHudMetric(ctx, "战", String(power), 226, 48, "#ffe6a6", 18);
   drawBar(ctx, 78, 68, 154, 5, game.elapsedDayTimer / game.dayLength, "#ffd56a", "#28170c", "#5f3f17");
-  drawPixelText(ctx, Math.ceil(Math.max(0, game.dayLength - game.elapsedDayTimer)) + "秒", 240, 63, "#b9a77a", 10);
+  drawPixelText(ctx, Math.ceil(Math.max(0, game.dayLength - game.elapsedDayTimer)) + "秒", 240, 63, UI_TEXT.muted, 10);
 
   addButton(game.ui, 786, 18, 72, 32, "军队", "army");
   addButton(game.ui, 868, 18, 72, 32, "设置", "settings");
@@ -187,9 +213,9 @@ function drawAvatar(ctx, button, player, input) {
   const y = button.y + (pressed ? 1 : 0);
 
   ctx.save();
-  ctx.fillStyle = hovered ? "#6a4628" : "#3b2a1a";
+  ctx.fillStyle = hovered ? BUTTON_THEME.hover : "#4b341f";
   ctx.fillRect(x - 2, y - 2, 44, 44);
-  ctx.strokeStyle = hovered ? "#ffd56a" : "#8f682e";
+  ctx.strokeStyle = hovered ? BUTTON_THEME.lightHover : BUTTON_THEME.light;
   ctx.lineWidth = 2;
   ctx.strokeRect(x - 1.5, y - 1.5, 43, 43);
 
@@ -219,7 +245,7 @@ function drawAvatar(ctx, button, player, input) {
 function drawHudMetric(ctx, label, value, x, y, valueColor, valueOffset = 31) {
   ctx.save();
   setupCanvasFont(ctx, 12, 800, UI_FONT_FAMILY);
-  ctx.fillStyle = "#b9a77a";
+  ctx.fillStyle = UI_TEXT.muted;
   ctx.fillText(label, Math.round(x), Math.round(y));
   setupCanvasFont(ctx, 16, 900, NUMBER_FONT_FAMILY);
   ctx.fillStyle = valueColor;
@@ -248,9 +274,6 @@ function drawTravelDestinationHint(ctx, game, button) {
 }
 
 function drawQuestTracker(ctx, game) {
-  if (game.state !== "world") {
-    return;
-  }
   const panelX = QUEST_PANEL.x;
   const panelY = QUEST_PANEL.y;
   const panelW = QUEST_PANEL.w;
@@ -271,7 +294,7 @@ function drawQuestTracker(ctx, game) {
 
   drawGlassPanel(ctx, panelX, panelY, panelW, panelH, title);
   drawQuestCompass(ctx, panelX + panelW - 30, panelY + 21, game.player.facingAngle || Math.PI);
-  drawPixelText(ctx, fitPixelText(ctx, objective, panelW - 66, 12), panelX + 18, panelY + 24, "#f8e9bd", 12);
+  drawPixelText(ctx, fitPixelText(ctx, objective, panelW - 66, 12), panelX + 18, panelY + 24, UI_TEXT.main, 12);
   drawQuestRow(ctx, "城镇", ownedTowns, towns.length, panelX + 18, panelY + 48, "#ffd56a", "", panelW - 36);
   drawQuestRow(ctx, "资源", ownedResources, resources.length, panelX + 18, panelY + 68, "#32ff9a", "", panelW - 36);
   drawQuestRow(ctx, "探索", explored, 100, panelX + 18, panelY + 88, "#7df3ff", "%", panelW - 36);
@@ -283,7 +306,7 @@ function drawQuestRow(ctx, label, value, max, x, y, color, suffix, rowWidth = 24
   const valueX = x + rowWidth;
   const barX = x + 48;
   const barW = Math.max(64, rowWidth - 86);
-  drawPixelText(ctx, label, x, y - 2, "#b9a77a", 10);
+  drawPixelText(ctx, label, x, y - 2, UI_TEXT.muted, 10);
   ctx.fillStyle = "rgba(0,0,0,0.42)";
   ctx.fillRect(barX, y, barW, 7);
   ctx.fillStyle = color;
@@ -388,7 +411,7 @@ function drawWarReports(ctx, game) {
       ? "#74d17a"
       : report.kind === "bad"
         ? "#ff7568"
-        : "#d7c89e";
+        : UI_TEXT.body;
     ctx.fillStyle = color;
     ctx.fillRect(x + 12, y + 16 + index * 16, 4, 4);
     drawPixelText(ctx, fitPixelText(ctx, report.text, w - 38, 10), x + 22, y + 11 + index * 16, color, 10);
@@ -423,7 +446,7 @@ function drawNearbyResourceActions(ctx, game) {
   const kindText = resource.kind === "mine" ? "矿山" : "农场";
 
   drawPanel(ctx, panelX, panelY, 216, 82, resource.name);
-  drawPixelText(ctx, kindText + " / " + ownerText + " / +" + resource.income + "金/日", panelX + 18, panelY + 22, "#f8e9bd", 13);
+  drawPixelText(ctx, kindText + " / " + ownerText + " / +" + resource.income + "金/日", panelX + 18, panelY + 22, UI_TEXT.main, 13);
   const disabled = resource.owner === "player";
   const captureButton = addButton(game.ui, panelX + 54, panelY + 48, 108, 28, "占领", "captureNearbyResource", disabled);
   drawButton(ctx, captureButton, game.input);
@@ -470,7 +493,7 @@ export function drawTownUi(ctx, game) {
   clearButtons(game.ui);
   const view = game.ui.townView || "home";
 
-  drawPanel(ctx, 140, 48, 680, 444, town.name);
+  drawPanel(ctx, 140, 48, 680, 444, town.name, "town");
   addPanelCloseButton(game.ui, 140, 48, 680, "leaveTown");
 
   const owner = FACTIONS[town.owner];
@@ -481,10 +504,10 @@ export function drawTownUi(ctx, game) {
   ctx.fillStyle = "rgba(255,255,255,0.03)";
   ctx.fillRect(168, 110, 624, 36);
   drawPixelText(ctx, "城防 " + Math.round(town.defense), 180, 116, "#ffd56a", 12);
-  drawPixelText(ctx, "收益 " + getTownDailyIncome(town) + " 金/日", 310, 116, "#f8e9bd", 12);
-  drawPixelText(ctx, "驻军战力 " + Math.round(getArmyPower(town.garrison)), 460, 116, "#d7c89e", 12);
+  drawPixelText(ctx, "收益 " + getTownDailyIncome(town) + " 金/日", 310, 116, UI_TEXT.main, 12);
+  drawPixelText(ctx, "驻军战力 " + Math.round(getArmyPower(town.garrison)), 460, 116, UI_TEXT.body, 12);
   drawPixelText(ctx, "你的金币 " + formatNumber(game.player.gold), 610, 116, "#ffd56a", 12);
-  drawPixelText(ctx, "守军等级 " + Math.floor(town.garrisonLevel || 1), 180, 134, "#b9a77a", 11);
+  drawPixelText(ctx, "守军等级 " + Math.floor(town.garrisonLevel || 1), 180, 134, UI_TEXT.muted, 11);
 
   if (view === "recruit") {
     drawTownRecruitView(ctx, game, town);
@@ -506,7 +529,7 @@ export function drawTownUi(ctx, game) {
 
 function drawTownHomeView(ctx, game, town) {
   drawPixelText(ctx, "城镇事务", 168, 176, "#ffd56a", 16);
-  drawPixelText(ctx, "选择要办理的事务。招募和交易会进入独立界面。", 168, 206, "#d7c89e", 12);
+  drawPixelText(ctx, "选择要办理的事务。招募和交易会进入独立界面。", 168, 206, UI_TEXT.body, 12);
 
   const recruitButton = addButton(game.ui, 220, 256, 180, 42, "招兵买马", "townView:recruit");
   const tradeButton = addButton(game.ui, 560, 256, 180, 42, "交易物品", "townView:trade");
@@ -525,7 +548,7 @@ function drawTownActionTile(ctx, button, caption) {
   ctx.strokeStyle = "rgba(143,104,46,0.5)";
   ctx.lineWidth = 1;
   ctx.strokeRect(x - 9.5, y - 11.5, button.w + 20, button.h + 56);
-  drawPixelText(ctx, caption, x + button.w / 2, y + 54, "#b9a77a", 11, "center");
+  drawPixelText(ctx, caption, x + button.w / 2, y + 54, UI_TEXT.muted, 11, "center");
   ctx.restore();
 }
 
@@ -544,8 +567,8 @@ function drawTownRecruitView(ctx, game, town) {
 
     // 兵种名
     drawPixelText(ctx, type.name, 212, y, type.color, 14);
-    drawPixelText(ctx, type.role, 272, y, "#b9a77a", 11);
-    drawPixelText(ctx, type.cost + " 金/人   生命 " + type.hp + "   攻击 " + type.attack, 212, y + 18, "#d7c89e", 10);
+    drawPixelText(ctx, type.role, 272, y, UI_TEXT.muted, 11);
+    drawPixelText(ctx, type.cost + " 金/人   生命 " + type.hp + "   攻击 " + type.attack, 212, y + 18, UI_TEXT.body, 10);
 
     const cannotBuy3 = armyFull || game.player.gold < type.cost * 3;
     const cannotBuy10 = armyFull || game.player.gold < type.cost * 10;
@@ -557,7 +580,7 @@ function drawTownRecruitView(ctx, game, town) {
   const rosterY = 188 + recruitOptions.length * 44 + 8;
   drawPixelText(ctx, "我军编制", 168, rosterY, "#ffd56a", 14);
   getRosterLines(game.player.army).slice(0, 5).forEach((line, index) => {
-    drawPixelText(ctx, line, 168, rosterY + 22 + index * 18, "#d7c89e", 11);
+    drawPixelText(ctx, line, 168, rosterY + 22 + index * 18, UI_TEXT.body, 11);
   });
 
   // 操作按钮
@@ -580,7 +603,7 @@ function drawTownTradeView(ctx, game, town) {
   drawPixelText(ctx, "背包出售", 506, 168, "#ffd56a", 14);
   drawMarketList(ctx, game, townListings, 168, 190, "buyMarket", true);
   drawMarketList(ctx, game, playerListings, 506, 190, "sellMarket", false);
-  drawPixelText(ctx, "收购价为当日售价的 80%-90%，不同城市价格不同。", 168, 452, "#b9a77a", 11);
+  drawPixelText(ctx, "收购价为当日售价的 80%-90%，不同城市价格不同。", 168, 452, UI_TEXT.muted, 11);
   addButton(game.ui, 592, 448, 78, 32, "返回", "townView:home");
   addButton(game.ui, 684, 448, 78, 32, "招募", "townView:recruit");
 }
@@ -593,7 +616,7 @@ function drawMarketList(ctx, game, listings, x, y, actionPrefix, buying) {
   ctx.strokeRect(x + 0.5, y - 7.5, 286, 238);
 
   if (!listings.length) {
-    drawPixelText(ctx, buying ? "今日无货" : "背包无可出售物品", x + 143, y + 92, "#8f8060", 12, "center");
+    drawPixelText(ctx, buying ? "今日无货" : "背包无可出售物品", x + 143, y + 92, UI_TEXT.empty, 12, "center");
     return;
   }
 
@@ -604,7 +627,7 @@ function drawMarketList(ctx, game, listings, x, y, actionPrefix, buying) {
     const rowRect = { x, y: rowY - 4, w: 202, h: 28 };
     const hovered = game.input && rectContains(rowRect, game.input.mouse.x, game.input.mouse.y);
 
-    ctx.fillStyle = selected ? "rgba(255,213,106,0.13)" : hovered ? "rgba(106,70,40,0.36)" : "rgba(0,0,0,0.16)";
+    ctx.fillStyle = selected ? "rgba(255,213,106,0.13)" : hovered ? "rgba(138,98,54,0.24)" : "rgba(255,255,255,0.025)";
     ctx.fillRect(rowRect.x, rowRect.y, rowRect.w, rowRect.h);
     ctx.strokeStyle = selected ? "#ffd56a" : hovered ? "#d6a84f" : "rgba(143,104,46,0.32)";
     ctx.strokeRect(rowRect.x + 0.5, rowRect.y + 0.5, rowRect.w, rowRect.h);
@@ -622,10 +645,10 @@ function drawMarketIcon(ctx, item, x, y, kind) {
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.42)";
   ctx.fillRect(x - 7, y - 7, 14, 14);
-  ctx.strokeStyle = kind === "weapon" ? getWeaponNameColor(item) : item.color || "#d7c89e";
+  ctx.strokeStyle = kind === "weapon" ? getWeaponNameColor(item) : item.color || UI_TEXT.body;
   ctx.lineWidth = 1;
   ctx.strokeRect(x - 6.5, y - 6.5, 14, 14);
-  ctx.fillStyle = kind === "weapon" ? getWeaponNameColor(item) : item.color || "#d7c89e";
+  ctx.fillStyle = kind === "weapon" ? getWeaponNameColor(item) : item.color || UI_TEXT.body;
   if (kind === "weapon") {
     ctx.fillRect(x - 1, y - 7, 3, 12);
     ctx.fillRect(x - 5, y - 4, 11, 2);
@@ -653,14 +676,14 @@ function drawMarketDetailPopup(ctx, game) {
   ctx.fillStyle = "rgba(0,0,0,0.48)";
   ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
   addButton(game.ui, 0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight, "关闭物品信息", "closeMarketDetail", false, true);
-  drawPanel(ctx, x, y, w, h, isWeapon ? "装备信息" : "商品信息");
+  drawPanel(ctx, x, y, w, h, isWeapon ? "装备信息" : "商品信息", "town");
   addPanelCloseButton(game.ui, x, y, w, "closeMarketDetail");
 
   const contentX = x + 34;
   const contentY = y + 44;
   drawMarketIcon(ctx, item, contentX + 12, contentY + 12, selected.kind);
   drawPixelText(ctx, item.name, contentX + 36, contentY, getMarketItemColor(selected), 20);
-  drawPixelText(ctx, isWeapon ? getQualityName(item) + " / 装备" : "跑商商品", contentX + 36, contentY + 32, "#b9a77a", 12);
+  drawPixelText(ctx, isWeapon ? getQualityName(item) + " / 装备" : "跑商商品", contentX + 36, contentY + 32, UI_TEXT.muted, 12);
 
   const boxY = contentY + 62;
   ctx.fillStyle = "rgba(255,255,255,0.04)";
@@ -673,11 +696,11 @@ function drawMarketDetailPopup(ctx, game) {
     formatEquipmentStats(item).forEach(function (line, index) {
       const col = index % 2;
       const row = Math.floor(index / 2);
-      drawPixelText(ctx, line, contentX + 18 + col * 132, boxY + 16 + row * 22, "#f8e9bd", 13);
+      drawPixelText(ctx, line, contentX + 18 + col * 132, boxY + 16 + row * 22, UI_TEXT.main, 13);
     });
   } else {
     wrapText(item.description || "可用于城市间贸易。", 17).slice(0, 4).forEach(function (line, index) {
-      drawPixelText(ctx, line, contentX + 18, boxY + 16 + index * 19, "#f8e9bd", 12);
+      drawPixelText(ctx, line, contentX + 18, boxY + 16 + index * 19, UI_TEXT.main, 12);
     });
   }
 
@@ -706,7 +729,7 @@ function getMarketKey(kind, id) {
 }
 
 function getMarketItemColor(listing) {
-  return listing.kind === "weapon" ? getWeaponNameColor(listing.item) : listing.item.color || "#f8e9bd";
+  return listing.kind === "weapon" ? getWeaponNameColor(listing.item) : listing.item.color || UI_TEXT.main;
 }
 
 function getPlayerGoodsEntries(player) {
@@ -764,7 +787,7 @@ export function drawMenuUi(ctx, game) {
   const panelX = 142;
   const panelY = 42;
   const panelW = 676;
-  drawPanel(ctx, panelX, panelY, panelW, 458, "属性界面");
+  drawPanel(ctx, panelX, panelY, panelW, 458, "属性界面", "menu");
   addPanelCloseButton(game.ui, panelX, panelY, panelW, "closeMenu");
 
   const general = game.player.general || { name: "沈铁冠", weapon: "oldSword" };
@@ -805,11 +828,16 @@ export function drawMenuUi(ctx, game) {
     ctx.fillStyle = "rgba(255,255,255,0.03)";
     ctx.fillRect(x, y - 6, 144, 34);
 
-    drawPixelText(ctx, row.name, x + 10, y + 4, "#f8e9bd", 13);
-    drawPixelText(ctx, String(row.value), x + 88, y + 6, "#ffd56a", 13, "center");
+    const attrButtonW = 28;
+    const minusX = x + 50;
+    const plusX = x + 108;
+    const valueX = (minusX + attrButtonW + plusX) / 2;
 
-    addButton(game.ui, x + 50, y - 1, 28, 26, "-", "attrUndo:" + row.id, sessionAdds <= 0);
-    addButton(game.ui, x + 108, y - 1, 28, 26, "+", "attrAdd:" + row.id, game.player.skillPoints <= 0);
+    drawPixelText(ctx, row.name, x + 10, y + 4, UI_TEXT.main, 13);
+    drawPixelText(ctx, String(row.value), valueX, y + 6, "#ffd56a", 13, "center");
+
+    addButton(game.ui, minusX, y - 1, attrButtonW, 26, "-", "attrUndo:" + row.id, sessionAdds <= 0);
+    addButton(game.ui, plusX, y - 1, attrButtonW, 26, "+", "attrAdd:" + row.id, game.player.skillPoints <= 0);
   });
 
   drawEquipmentInventory(ctx, game);
@@ -855,6 +883,8 @@ function getPlayerGeneralPreview(player) {
 }
 
 function drawPlayerStatGrid(ctx, stats, x, y) {
+  const labelValueGap = 42 * 0.7;
+  const rightLabelX = x + 116;
   const rows = [
     ["等级", stats.level, "经验", stats.exp + "/" + stats.expNext],
     ["血量", stats.hp, "攻击", stats.attack],
@@ -863,11 +893,11 @@ function drawPlayerStatGrid(ctx, stats, x, y) {
   ];
   rows.forEach(function (row, index) {
     const yPos = y + index * 16;
-    drawPixelText(ctx, row[0], x, yPos, "#8f682e", 10);
-    drawPixelText(ctx, String(row[1]), x + 42, yPos, "#f8e9bd", 11);
+    drawPixelText(ctx, row[0], x, yPos, UI_TEXT.label, 10);
+    drawPixelText(ctx, String(row[1]), x + labelValueGap, yPos, UI_TEXT.main, 11);
     if (row[2]) {
-      drawPixelText(ctx, row[2], x + 116, yPos, "#8f682e", 10);
-      drawPixelText(ctx, String(row[3]), x + 158, yPos, "#f8e9bd", 11);
+      drawPixelText(ctx, row[2], rightLabelX, yPos, UI_TEXT.label, 10);
+      drawPixelText(ctx, String(row[3]), rightLabelX + labelValueGap, yPos, UI_TEXT.main, 11);
     }
   });
 }
@@ -882,11 +912,11 @@ function drawEquipmentInventory(ctx, game) {
   ctx.fillRect(456, 310, 308, 138);
 
   if (!weaponIds.length && !goods.length) {
-    drawPixelText(ctx, "背包为空", 610, 364, "#8f8060", 12, "center");
+    drawPixelText(ctx, "背包为空", 610, 364, UI_TEXT.empty, 12, "center");
     return;
   }
 
-  drawPixelText(ctx, "装备", 470, 316, "#b9a77a", 10);
+  drawPixelText(ctx, "装备", 470, 316, UI_TEXT.label, 10);
   weaponIds.slice(0, 6).forEach(function (id, index) {
     const weapon = WEAPONS[id];
     const col = index % 3;
@@ -898,7 +928,7 @@ function drawEquipmentInventory(ctx, game) {
     const hovered = game.input && rectContains(rect, game.input.mouse.x, game.input.mouse.y);
     const pressed = hovered && game.input.mouse.down;
     const drawY = y + (pressed ? 1 : 0);
-    ctx.fillStyle = selected ? "rgba(255,213,106,0.14)" : hovered ? "rgba(106,70,40,0.72)" : "rgba(0,0,0,0.18)";
+    ctx.fillStyle = selected ? "rgba(255,213,106,0.14)" : hovered ? "rgba(138,98,54,0.28)" : "rgba(255,255,255,0.035)";
     ctx.fillRect(x, drawY, 84, 26);
     ctx.strokeStyle = selected ? "#ffd56a" : hovered ? "#d6a84f" : "#5f3f17";
     ctx.lineWidth = 1;
@@ -907,7 +937,7 @@ function drawEquipmentInventory(ctx, game) {
     addButton(game.ui, x, y, 84, 26, "查看装备", "selectEquipment:" + id, false, true);
   });
 
-  drawPixelText(ctx, "商品", 470, 392, "#b9a77a", 10);
+  drawPixelText(ctx, "商品", 470, 392, UI_TEXT.label, 10);
   goods.slice(0, 6).forEach(function (entry, index) {
     const item = entry.item;
     const col = index % 3;
@@ -919,12 +949,12 @@ function drawEquipmentInventory(ctx, game) {
     const hovered = game.input && rectContains(rect, game.input.mouse.x, game.input.mouse.y);
     const pressed = hovered && game.input.mouse.down;
     const drawY = y + (pressed ? 1 : 0);
-    ctx.fillStyle = selected ? "rgba(255,213,106,0.14)" : hovered ? "rgba(106,70,40,0.72)" : "rgba(0,0,0,0.18)";
+    ctx.fillStyle = selected ? "rgba(255,213,106,0.14)" : hovered ? "rgba(138,98,54,0.28)" : "rgba(255,255,255,0.035)";
     ctx.fillRect(x, drawY, 84, 24);
     ctx.strokeStyle = selected ? "#ffd56a" : hovered ? "#d6a84f" : "#5f3f17";
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, drawY + 0.5, 84, 24);
-    drawPixelText(ctx, item.name + " x" + entry.count, x + 6, drawY + 6, item.color || "#f8e9bd", 10);
+    drawPixelText(ctx, item.name + " x" + entry.count, x + 6, drawY + 6, item.color || UI_TEXT.main, 10);
     addButton(game.ui, x, y, 84, 24, "查看商品", "selectMarketItem:good:" + item.id, false, true);
   });
 }
@@ -946,13 +976,13 @@ function drawEquipmentDetailPopup(ctx, game) {
   ctx.fillStyle = "rgba(0,0,0,0.48)";
   ctx.fillRect(0, 0, 960, 540);
   addButton(game.ui, 0, 0, 960, 540, "关闭装备信息", "closeEquipmentDetail", false, true);
-  drawPanel(ctx, x, y, w, h, "装备信息");
+  drawPanel(ctx, x, y, w, h, "装备信息", "menu");
   addPanelCloseButton(game.ui, x, y, w, "closeEquipmentDetail");
 
   const contentX = x + 34;
   const contentY = y + 44;
   drawPixelText(ctx, weapon.name, contentX, contentY, getWeaponNameColor(weapon), 20);
-  drawPixelText(ctx, getQualityName(weapon) + " / 武器", contentX, contentY + 34, "#b9a77a", 12);
+  drawPixelText(ctx, getQualityName(weapon) + " / 武器", contentX, contentY + 34, UI_TEXT.muted, 12);
 
   const statsBoxY = contentY + 58;
   ctx.fillStyle = "rgba(255,255,255,0.04)";
@@ -967,7 +997,7 @@ function drawEquipmentDetailPopup(ctx, game) {
     const row = Math.floor(index / 2);
     const statX = contentX + 18 + col * 132;
     const statY = statsBoxY + 14 + row * 21;
-    drawPixelText(ctx, line, statX, statY, "#f8e9bd", 13);
+    drawPixelText(ctx, line, statX, statY, UI_TEXT.main, 13);
   });
   addButton(game.ui, x + 114, y + h - 50, 120, 34, equipped ? "卸下" : "穿戴", equipped ? "unequipSelectedEquipment" : "equipSelectedEquipment");
 }
@@ -981,13 +1011,13 @@ export function drawArmyUi(ctx, game) {
   const panelX = 176;
   const panelY = 48;
   const panelW = 608;
-  drawPanel(ctx, panelX, panelY, panelW, 444, "军队管理");
+  drawPanel(ctx, panelX, panelY, panelW, 444, "军队管理", "army");
   addPanelCloseButton(game.ui, panelX, panelY, panelW, "closeArmy");
   drawPixelText(ctx, "金币 " + formatNumber(game.player.gold), 214, 84, "#ffd56a", 14);
   drawPixelText(ctx, "兵力 " + getArmySize(game.player.army) + "/" + getMaxArmySize(game.player), 344, 84, "#d9f0ff", 14);
-  drawPixelText(ctx, "战力 " + Math.round(getArmyPower(game.player.army)), 484, 84, "#f8e9bd", 14);
+  drawPixelText(ctx, "战力 " + Math.round(getArmyPower(game.player.army)), 484, 84, UI_TEXT.main, 14);
 
-  drawPixelText(ctx, "部队编制", 214, 122, "#b9a77a", 11);
+  drawPixelText(ctx, "部队编制", 214, 122, UI_TEXT.label, 11);
 
   const soldiers = getArmySoldiers(game.player.army);
   const armyPage = getArmyPage(game.ui, "armyPage", soldiers.length, ARMY_GRID_LAYOUT);
@@ -1001,7 +1031,7 @@ export function drawArmyUi(ctx, game) {
   drawArmyToolbar(ctx, game, soldiers, selectedSoldiers, batchPreview, ARMY_GRID_LAYOUT);
 
   if (!game.player.army.length) {
-    drawPixelText(ctx, "暂无部队", 480, 236, "#b9a77a", 16, "center");
+    drawPixelText(ctx, "暂无部队", 480, 236, UI_TEXT.empty, 16, "center");
   }
 
   drawArmySoldierGrid(ctx, game, visibleSoldiers, selectedSoldier, {
@@ -1046,15 +1076,15 @@ export function drawArmyPreviewOverlay(ctx, game) {
   ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
   addButton(game.ui, 0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight, "关闭敌军预览", "closeEnemyArmyPreview", false, true);
 
-  drawPanel(ctx, panelX, panelY, panelW, 444, preview.title || "敌军预览");
+  drawPanel(ctx, panelX, panelY, panelW, 444, preview.title || "敌军预览", "battle");
   addPanelCloseButton(game.ui, panelX, panelY, panelW, "closeEnemyArmyPreview");
   drawPixelText(ctx, preview.subtitle || "敌军编制", 214, 84, "#ff8a74", 14);
   drawPixelText(ctx, "兵力 " + getArmySize(army), 344, 84, "#d9f0ff", 14);
-  drawPixelText(ctx, "战力 " + Math.round(getArmyPower(army)), 484, 84, "#f8e9bd", 14);
-  drawPixelText(ctx, "敌军编制", 214, 122, "#b9a77a", 11);
+  drawPixelText(ctx, "战力 " + Math.round(getArmyPower(army)), 484, 84, UI_TEXT.main, 14);
+  drawPixelText(ctx, "敌军编制", 214, 122, UI_TEXT.label, 11);
 
   if (!army.length) {
-    drawPixelText(ctx, "暂无部队", 480, 236, "#b9a77a", 16, "center");
+    drawPixelText(ctx, "暂无部队", 480, 236, UI_TEXT.empty, 16, "center");
   }
 
   drawArmySoldierGrid(ctx, game, visibleSoldiers, null, {
@@ -1208,7 +1238,7 @@ function drawArmyToolbar(ctx, game, soldiers, selectedSoldiers, batchPreview, la
   const status = multiSelect
     ? "已选 " + selectedCount + (batchPreview.count > 0 ? " / 可升级 " + batchPreview.count + " / " + batchPreview.cost + "金" : " / 无可升级")
     : "点击士兵查看详情";
-  drawPixelText(ctx, status, layout.x, layout.y - 52, multiSelect ? "#7df3ff" : "#8f8060", 11);
+  drawPixelText(ctx, status, layout.x, layout.y - 52, multiSelect ? "#7df3ff" : UI_TEXT.empty, 11);
   if (multiSelect && batchPreview.count > 0 && game.player.gold < batchPreview.cost) {
     drawPixelText(ctx, "金币不足", layout.x + 216, layout.y - 52, "#ff7568", 11);
   }
@@ -1341,7 +1371,7 @@ function drawArmySoldierCard(ctx, game, soldier, options = {}) {
   ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
   addButton(game.ui, 0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight, "关闭士兵信息", closeAction, false, true);
 
-  drawPanel(ctx, cardX, cardY, cardW, cardH, options.title || "士兵信息");
+  drawPanel(ctx, cardX, cardY, cardW, cardH, options.title || "士兵信息", "army");
   addPanelCloseButton(game.ui, cardX, cardY, cardW, closeAction);
 
   ctx.fillStyle = "rgba(255,255,255,0.04)";
@@ -1352,8 +1382,8 @@ function drawArmySoldierCard(ctx, game, soldier, options = {}) {
 
   drawTroopPortrait(ctx, unit.type, contentX + 34, contentY + 36, stats.color, 1.15);
   drawPixelText(ctx, stats.name, contentX + 82, contentY + 8, stats.color, 21);
-  drawPixelText(ctx, stats.role, contentX + 82, contentY + 42, "#b9a77a", 12);
-  drawPixelText(ctx, "Lv." + unit.level + "  士气 " + Math.round(unit.morale || 0), contentX + 82, contentY + 62, "#f8e9bd", 13);
+  drawPixelText(ctx, stats.role, contentX + 82, contentY + 42, UI_TEXT.muted, 12);
+  drawPixelText(ctx, "Lv." + unit.level + "  士气 " + Math.round(unit.morale || 0), contentX + 82, contentY + 62, UI_TEXT.main, 13);
 
   const rows = [
     ["生命", stats.hp, next ? next.hp : null],
@@ -1376,8 +1406,8 @@ function drawArmySoldierCard(ctx, game, soldier, options = {}) {
 }
 
 function drawArmyStatPreview(ctx, label, value, nextValue, x, y, showDelta) {
-  drawPixelText(ctx, label, x, y, "#b9a77a", 10);
-  drawPixelText(ctx, String(value), x + 64, y, "#f8e9bd", 10);
+  drawPixelText(ctx, label, x, y, UI_TEXT.label, 10);
+  drawPixelText(ctx, String(value), x + 64, y, UI_TEXT.main, 10);
   if (!showDelta || nextValue === null || nextValue === undefined) {
     return;
   }
@@ -1466,10 +1496,10 @@ export function drawSettingsUi(ctx, game) {
   const panelX = 300;
   const panelY = 72;
   const panelW = 360;
-  drawPanel(ctx, panelX, panelY, panelW, 360, "设置");
+  drawPanel(ctx, panelX, panelY, panelW, 360, "设置", "settings");
   addPanelCloseButton(game.ui, panelX, panelY, panelW, "closeSettings");
   drawPixelText(ctx, "最大帧率", 336, 110, "#ffd56a", 15);
-  drawPixelText(ctx, "当前 " + game.settings.maxFps + " FPS", 520, 112, "#f8e9bd", 12);
+  drawPixelText(ctx, "当前 " + game.settings.maxFps + " FPS", 520, 112, UI_TEXT.main, 12);
 
   const options = [15, 24, 30, 45, 60];
   options.forEach(function (fps, index) {
@@ -1478,7 +1508,7 @@ export function drawSettingsUi(ctx, game) {
   });
 
   drawPixelText(ctx, "存档", 336, 206, "#ffd56a", 15);
-  addButton(game.ui, 336, 240, 132, 34, "保存游戏", "save");
+  addButton(game.ui, 336, 240, 132, 34, "保存存档", "save");
   addButton(game.ui, 492, 240, 132, 34, "读取存档", "load");
   addButton(game.ui, 336, 284, 132, 34, document.fullscreenElement ? "退出全屏" : "全屏", "toggleFullscreen");
   drawPixelText(ctx, "兑换码", 336, 292, "#ffd56a", 15);
@@ -1503,14 +1533,14 @@ function drawPrivilegeDialog(ctx, game) {
   const value = game.privilege.input || "";
   ctx.fillStyle = "rgba(0,0,0,0.5)";
   ctx.fillRect(0, 0, 960, 540);
-  drawPanel(ctx, 304, 176, 352, 188, "兑换码");
+  drawPanel(ctx, 304, 176, 352, 188, "兑换码", "settings");
   drawPixelText(ctx, "请输入兑换码", 480, 210, "#ffd56a", 16, "center");
-  ctx.fillStyle = "#110b05";
+  ctx.fillStyle = "rgba(45,31,18,0.72)";
   ctx.fillRect(348, 246, 264, 34);
-  ctx.strokeStyle = "#8f682e";
+  ctx.strokeStyle = BUTTON_THEME.light;
   ctx.lineWidth = 1;
   ctx.strokeRect(348.5, 246.5, 264, 34);
-  drawPixelText(ctx, value || " ", 360, 254, value ? "#f8e9bd" : "#6f6048", 15);
+  drawPixelText(ctx, value || " ", 360, 254, value ? UI_TEXT.main : UI_TEXT.dim, 15);
   if (Math.floor(Date.now() / 450) % 2 === 0) {
     const cursorX = Math.min(596, 362 + value.length * 9);
     ctx.fillStyle = "#ffd56a";
@@ -1525,14 +1555,14 @@ function drawEquipmentSlot(ctx, x, y, label, item, color, input, clickable, sele
   const pressed = Boolean(hovered && input.mouse.down);
   const drawY = y + (pressed ? 1 : 0);
 
-  ctx.strokeStyle = selected ? "#ffd56a" : hovered ? "#ffd56a" : "#5f3f17";
+  ctx.strokeStyle = selected ? "#ffd56a" : hovered ? "#ffd56a" : "#806035";
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, drawY + 0.5, 120, 52);
 
-  ctx.fillStyle = selected ? "rgba(255,213,106,0.12)" : hovered ? "rgba(106,70,40,0.36)" : "rgba(0,0,0,0.2)";
+  ctx.fillStyle = selected ? "rgba(255,213,106,0.12)" : hovered ? "rgba(138,98,54,0.28)" : "rgba(255,255,255,0.035)";
   ctx.fillRect(x + 2, drawY + 2, 116, 48);
 
-  drawPixelText(ctx, label, x + 8, drawY + 4, hovered || selected ? "#ffd56a" : "#8f682e", 10);
+  drawPixelText(ctx, label, x + 8, drawY + 4, hovered || selected ? "#ffd56a" : UI_TEXT.label, 10);
   drawPixelText(ctx, item, x + 8, drawY + 22, color, 13);
 
   // 小装饰

@@ -1,7 +1,7 @@
 import { CONFIG, FACTIONS, MINIMAP_FACTION_COLORS, MINIMAP_ICON_COLORS, MINIMAP_ICON_SETTINGS, TERRAIN, TROOP_TYPES } from "./config.js";
 import { getBattleTitle } from "./battle.js";
 import { getTerrainById } from "./map.js";
-import { hasSave } from "./save.js";
+import { getSaveSlots, hasResumeGame, hasSave } from "./save.js";
 import { addButton, drawArmyPreviewOverlay, drawArmyUi, drawButton, drawHud, drawMenuUi, drawSettingsUi, drawTownUi } from "./ui.js";
 import { drawBar, drawPanel, drawPixelText, clamp } from "./utils.js";
 import { drawMiniMap as drawMiniMapOverlay } from "../map/minimap.js";
@@ -17,6 +17,13 @@ titleBackgroundImage.src = "./assets/title-background.svg";
 const miniMapTerrainCache = {
   key: "",
   canvas: null
+};
+const UI_TEXT = {
+  main: "#f4e1aa",
+  body: "#ead59b",
+  muted: "#d7c286",
+  empty: "#b7a16a",
+  dim: "#a99563"
 };
 
 export function createRenderer(canvas, display) {
@@ -37,12 +44,14 @@ export function renderGame(renderer, game) {
 
   if (game.state === "start") {
     renderStartScreen(ctx, game);
+    drawSaveSlotDialog(ctx, game);
     drawCenterNotice(ctx, game);
     return;
   }
 
   if (game.state === "battle") {
     renderBattle(ctx, game);
+    drawSaveSlotDialog(ctx, game);
     drawCenterNotice(ctx, game);
     return;
   }
@@ -69,6 +78,7 @@ export function renderGame(renderer, game) {
     drawVictoryBanner(ctx);
   }
   drawWorldMap(ctx, game);
+  drawSaveSlotDialog(ctx, game);
   drawCenterNotice(ctx, game);
 }
 
@@ -96,17 +106,179 @@ function renderStartScreen(ctx, game) {
   ctx.fillRect(0, 0, CONFIG.canvasWidth, 260);
 
   drawPixelText(ctx, "铁冠诸侯", CONFIG.canvasWidth / 2, 118, "#ffd56a", 46, "center");
-  drawPixelText(ctx, "像素策略 RPG", CONFIG.canvasWidth / 2, 178, "#f8e9bd", 17, "center");
-  drawPixelText(ctx, "探索大陆 · 招募扩军 · 攻城收税 · 统一全境", CONFIG.canvasWidth / 2, 212, "#b9a77a", 14, "center");
+  drawPixelText(ctx, "像素策略 RPG", CONFIG.canvasWidth / 2, 178, UI_TEXT.main, 17, "center");
+  drawPixelText(ctx, "探索大陆 · 招募扩军 · 攻城收税 · 统一全境", CONFIG.canvasWidth / 2, 212, UI_TEXT.muted, 14, "center");
 
-  drawPanel(ctx, 330, 264, 300, 166, "");
+  const hasResume = hasResumeGame();
+  const hasSlotSave = hasSave();
+  drawPanel(ctx, 330, 256, 300, 198, "");
   const newGameButton = addButton(game.ui, 380, 300, 200, 38, "开始新游戏", "newGame");
-  const continueButton = addButton(game.ui, 380, 354, 200, 38, "继续游戏", "continueGame", !hasSave());
+  const continueButton = addButton(game.ui, 380, 348, 200, 38, "继续游戏", "continueGame", !hasResume);
+  const loadButton = addButton(game.ui, 380, 396, 200, 38, "读取存档", "loadSave", !hasSlotSave);
   drawButton(ctx, newGameButton, game.input);
   drawButton(ctx, continueButton, game.input);
+  drawButton(ctx, loadButton, game.input);
 
-  const saveText = hasSave() ? "检测到本地存档" : "暂无本地存档";
-  drawPixelText(ctx, saveText, CONFIG.canvasWidth / 2, 406, hasSave() ? "#d7c89e" : "#8f8060", 12, "center");
+  const saveText = hasSlotSave ? "检测到正式存档" : "暂无正式存档";
+  drawPixelText(ctx, saveText, CONFIG.canvasWidth / 2, 444, hasSlotSave ? UI_TEXT.body : UI_TEXT.empty, 12, "center");
+}
+
+function drawSaveSlotDialog(ctx, game) {
+  if (!game.ui || !game.ui.saveSlotDialogOpen) {
+    return;
+  }
+
+  const mode = game.ui.saveSlotDialogMode === "save" ? "save" : "load";
+  const isSaveMode = mode === "save";
+  const slots = getSaveSlots();
+  ctx.fillStyle = "rgba(0,0,0,0.48)";
+  ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+  const panelX = 260;
+  const panelY = 138;
+  const panelW = 440;
+  drawPanel(ctx, panelX, panelY, panelW, 282, isSaveMode ? "保存存档" : "读取存档", "save");
+  for (let i = 0; i < 3; i += 1) {
+    const slot = slots[i];
+    const action = (isSaveMode ? "saveGameSlot:" : "loadSaveSlot:") + i;
+    const button = addButton(game.ui, 304, 188 + i * 58, 352, 46, "", action, !isSaveMode && !slot);
+    drawButton(ctx, button, game.input);
+    drawSaveSlotInfo(ctx, button, slot);
+    if (slot) {
+      const deleteButton = addButton(game.ui, 617, button.y + 22, 18, 18, "", "deleteSaveSlot:" + i);
+      drawDeleteSaveButton(ctx, deleteButton, game.input);
+    }
+  }
+  const closeButton = addButton(game.ui, 428, 368, 104, 30, "取消", "closeSaveSlotDialog");
+  drawButton(ctx, closeButton, game.input);
+}
+
+function drawDeleteSaveButton(ctx, button, input) {
+  const hovered = input && !button.disabled
+    && input.mouse.x >= button.x
+    && input.mouse.x <= button.x + button.w
+    && input.mouse.y >= button.y
+    && input.mouse.y <= button.y + button.h;
+  const pressed = Boolean(hovered && input.mouse.down);
+  const x = button.x;
+  const y = button.y + (pressed ? 1 : 0);
+  const red = hovered ? "#8a2f36" : "#5f1f25";
+
+  ctx.save();
+  ctx.fillStyle = pressed ? "rgba(95,31,37,0.28)" : hovered ? "rgba(95,31,37,0.18)" : "rgba(0,0,0,0.08)";
+  ctx.fillRect(x, y, button.w, button.h);
+  ctx.strokeStyle = red;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 0.5, y + 0.5, button.w - 1, button.h - 1);
+
+  const cx = x + Math.floor(button.w / 2);
+  const top = y + 4;
+  ctx.strokeStyle = red;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - 5, top + 2);
+  ctx.lineTo(cx + 5, top + 2);
+  ctx.moveTo(cx - 2, top);
+  ctx.lineTo(cx + 2, top);
+  ctx.moveTo(cx - 4, top + 4);
+  ctx.lineTo(cx - 3, top + 11);
+  ctx.lineTo(cx + 3, top + 11);
+  ctx.lineTo(cx + 4, top + 4);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 1.5, top + 6);
+  ctx.lineTo(cx - 1.5, top + 10);
+  ctx.moveTo(cx + 1.5, top + 6);
+  ctx.lineTo(cx + 1.5, top + 10);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSaveSlotInfo(ctx, button, slot) {
+  const x = button.x;
+  const y = button.y;
+  const disabled = button.disabled;
+  if (!slot) {
+    drawPixelText(ctx, "空存档", x + 18, y + 14, disabled ? UI_TEXT.dim : "#ffe08a", 13);
+    return;
+  }
+
+  const player = slot.player || {};
+  const name = player.name || "玩家";
+  const level = Math.max(1, Math.floor(player.level || 1));
+  const day = Math.max(1, Math.floor(player.day || 1));
+  const gold = formatSaveGold(player.gold);
+  const explored = getSaveExplorePercent(slot);
+  const armySize = getSaveArmySize(player);
+  const townCount = getSaveTownCount(slot);
+  const time = slot.savedAt ? formatSaveTime(slot.savedAt) : "";
+
+  const detailLine = "第" + day + "日  金币 " + gold + "  兵数 " + armySize + "    城市 " + townCount + "  探索 " + explored + "%";
+  drawPixelText(ctx, fitSlotText(name + "  Lv." + level, 18), x + 18, y + 8, "#ffd56a", 12);
+  drawPixelText(ctx, detailLine, x + 18, y + 27, UI_TEXT.body, 10);
+  if (time) {
+    drawPixelText(ctx, time, x + button.w - 14, y + 8, UI_TEXT.muted, 10, "right");
+  }
+}
+
+function fitSlotText(text, maxChars) {
+  const value = String(text || "");
+  if (value.length <= maxChars) {
+    return value;
+  }
+  return value.slice(0, Math.max(1, maxChars - 2)) + "..";
+}
+
+function getSaveExplorePercent(slot) {
+  const fog = slot && slot.fog;
+  const cells = fog && Array.isArray(fog.cells) ? fog.cells : [];
+  if (!cells.length) {
+    return 0;
+  }
+  let explored = 0;
+  for (let i = 0; i < cells.length; i += 1) {
+    if (Number(cells[i]) > 0) {
+      explored += 1;
+    }
+  }
+  return Math.round((explored / cells.length) * 100);
+}
+
+function getSaveArmySize(player) {
+  const army = player && Array.isArray(player.army) ? player.army : [];
+  return army.reduce(function (sum, unit) {
+    return sum + Math.max(0, Math.floor(Number(unit.count) || 0));
+  }, 0);
+}
+
+function getSaveTownCount(slot) {
+  const towns = slot && Array.isArray(slot.towns) ? slot.towns : [];
+  return towns.reduce(function (sum, town) {
+    return sum + (town && town.owner === "player" ? 1 : 0);
+  }, 0);
+}
+
+function formatSaveGold(value) {
+  const amount = Math.max(0, Math.floor(Number(value) || 0));
+  if (amount >= 1000000) {
+    return Math.floor(amount / 10000) + "万";
+  }
+  if (amount >= 10000) {
+    return Math.round(amount / 1000) / 10 + "万";
+  }
+  return String(amount);
+}
+
+function formatSaveTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return month + "-" + day + " " + hour + ":" + minute;
 }
 
 function drawCoverImage(ctx, image, x, y, w, h) {
@@ -821,7 +993,7 @@ function renderBattle(ctx, game) {
   const battle = game.battle;
   game.ui.buttons.length = 0;
   clearBattleBackground(ctx);
-  drawPanel(ctx, 20, 20, 920, 500, getBattleTitle(battle));
+  drawPanel(ctx, 20, 20, 920, 500, getBattleTitle(battle), "battle");
   drawBattleField(ctx);
   drawBattleUnits(ctx, battle);
   drawBattleEffects(ctx, battle);
@@ -1055,7 +1227,8 @@ function getPremiumBattlePalette(unit) {
 
 function drawPremiumFootSoldierSprite(ctx, unit, palette, time, attack) {
   const step = Math.round(Math.sin(time * 9 + (unit.animSeed || 0)) * 2);
-  const armSwing = Math.round(attack * 6);
+  const attacking = attack > 0.04;
+  const armSwing = attacking ? Math.round(attack * 7) : 0;
 
   drawPremiumBackBanner(ctx, unit, palette, -7, -39, 20);
   drawPixelBlock(ctx, -12, -29, 24, 25, palette.cloth);
@@ -1075,7 +1248,7 @@ function drawPremiumFootSoldierSprite(ctx, unit, palette, time, attack) {
   drawPixelBlock(ctx, -16, -31, 7, 10, palette.metal);
   drawPixelBlock(ctx, 9, -31, 7, 10, palette.metal);
   drawPixelBlock(ctx, -18, -22, 7, 13, palette.shade);
-  drawPixelBlock(ctx, 11 + armSwing, -22, 7, 13, palette.shade);
+  drawPixelBlock(ctx, 11 + armSwing, attacking ? -24 : -22, 7, attacking ? 10 : 13, palette.shade);
 
   drawPremiumBattleHead(ctx, unit, palette, -1, -43);
   drawPremiumWeaponByType(ctx, unit, palette, attack);
@@ -1084,6 +1257,8 @@ function drawPremiumFootSoldierSprite(ctx, unit, palette, time, attack) {
 
 function drawPremiumMageSprite(ctx, unit, palette, time, attack) {
   const pulse = Math.sin(time * 4 + (unit.animSeed || 0)) * 0.5 + 0.5;
+  const attacking = attack > 0.04;
+  const castReach = Math.round(attack * 9);
   drawPixelBlock(ctx, -11, -33, 22, 31, darkenColor(palette.base, 0.18));
   drawPixelBlock(ctx, -8, -38, 16, 16, palette.base);
   drawPixelBlock(ctx, -6, -31, 12, 27, palette.light);
@@ -1093,11 +1268,18 @@ function drawPremiumMageSprite(ctx, unit, palette, time, attack) {
   drawPixelBlock(ctx, -4, -42, 8, 7, palette.skin);
   drawPixelBlock(ctx, 1, -39, 2, 2, "#090604");
   drawPixelBlock(ctx, -15, -27, 7, 16, palette.shade);
-  drawPixelBlock(ctx, 8 + Math.round(attack * 4), -27, 7, 16, palette.shade);
-  drawPixelBlock(ctx, 15, -43, 3, 43, "#5a3a5a");
-  drawPixelBlock(ctx, 12, -49, 9, 9, `rgba(199,155,255,${0.72 + pulse * 0.2})`);
-  drawPixelBlock(ctx, 14, -47, 5, 5, `rgba(255,235,255,${0.4 + pulse * 0.3})`);
-  drawPixelBlock(ctx, 10, -42, 13, 2, `rgba(199,155,255,${0.35 + pulse * 0.2})`);
+  drawPixelBlock(ctx, 8 + castReach, attacking ? -30 : -27, 7, attacking ? 12 : 16, palette.shade);
+  if (attacking) {
+    drawWeaponLine(ctx, 16, -40, 30 + castReach, -25, "#5a3a5a", 3);
+    drawPixelBlock(ctx, 30 + castReach, -31, 10, 10, `rgba(199,155,255,${0.76 + pulse * 0.2})`);
+    drawPixelBlock(ctx, 33 + castReach, -28, 5, 5, `rgba(255,235,255,${0.48 + pulse * 0.3})`);
+    drawPixelBlock(ctx, 23 + castReach, -24, 20, 2, `rgba(199,155,255,${0.4 + pulse * 0.26})`);
+  } else {
+    drawPixelBlock(ctx, 15, -43, 3, 43, "#5a3a5a");
+    drawPixelBlock(ctx, 12, -49, 9, 9, `rgba(199,155,255,${0.64 + pulse * 0.16})`);
+    drawPixelBlock(ctx, 14, -47, 5, 5, `rgba(255,235,255,${0.3 + pulse * 0.22})`);
+    drawPixelBlock(ctx, 10, -42, 13, 2, `rgba(199,155,255,${0.28 + pulse * 0.14})`);
+  }
   drawPremiumLevelAccent(ctx, unit, palette);
 }
 
@@ -1130,8 +1312,15 @@ function drawPremiumCavalrySprite(ctx, unit, palette, time, attack) {
   drawPixelBlock(ctx, 0, -63, 7, 6, palette.trim);
   drawPixelBlock(ctx, 6, -38, 7, 13, palette.shade);
 
-  drawPixelBlock(ctx, 13, -43, 42 + Math.round(attack * 9), 3, "#8a7050");
-  drawPixelBlock(ctx, 50 + Math.round(attack * 9), -47, 7, 8, "#e8d0b0");
+  if (attack > 0.04) {
+    drawWeaponLine(ctx, 13, -43, 55 + Math.round(attack * 11), -41 + Math.round(attack * 3), "#8a7050", 3);
+    drawPixelBlock(ctx, 53 + Math.round(attack * 11), -46 + Math.round(attack * 3), 8, 9, "#e8d0b0");
+    drawAttackMotionTrail(ctx, 34, -45, 32, 14, palette.glow, attack);
+  } else {
+    drawPixelBlock(ctx, 14, -59, 4, 44, "#8a7050");
+    drawPixelBlock(ctx, 11, -63, 10, 8, "#e8d0b0");
+    drawPixelBlock(ctx, 17, -53, 13, 7, palette.trim);
+  }
   drawPixelBlock(ctx, -14, -35, 7, 18, palette.cloth);
   drawPremiumLevelAccent(ctx, unit, palette);
 }
@@ -1178,66 +1367,128 @@ function drawPremiumBattleHead(ctx, unit, palette, cx, cy, ornate = false) {
 }
 
 function drawPremiumWeaponByType(ctx, unit, palette, attack) {
+  const attacking = attack > 0.04;
   if (unit.type === "infantry") {
-    drawPixelBlock(ctx, 14, -28 + Math.round(attack * 3), 24, 4, "#d8d2c6");
-    drawPixelBlock(ctx, 35, -31 + Math.round(attack * 3), 5, 10, "#f3ead8");
     drawPixelBlock(ctx, -21, -29, 10, 21, palette.metalDark);
     drawPixelBlock(ctx, -19, -27, 7, 17, palette.base);
     drawPixelBlock(ctx, -18, -24, 5, 3, palette.trim);
+    if (attacking) {
+      drawWeaponLine(ctx, 12, -30, 35 + Math.round(attack * 9), -42 + Math.round(attack * 10), "#d8d2c6", 4);
+      drawPixelBlock(ctx, 34 + Math.round(attack * 9), -47 + Math.round(attack * 10), 6, 11, "#f3ead8");
+      drawAttackMotionTrail(ctx, 18, -44, 28, 20, palette.glow, attack);
+    } else {
+      drawPixelBlock(ctx, 15, -26, 4, 30, "#d8d2c6");
+      drawPixelBlock(ctx, 12, -29, 10, 5, "#f3ead8");
+      drawPixelBlock(ctx, 13, -11, 8, 4, palette.trim);
+    }
   } else if (unit.type === "pikeman") {
-    ctx.strokeStyle = "#8a7050";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(9, -29);
-    ctx.lineTo(51 + attack * 8, -43 - attack * 3);
-    ctx.stroke();
-    drawPixelBlock(ctx, 48 + Math.round(attack * 8), -48 - Math.round(attack * 3), 8, 10, "#e8d8c0");
+    if (attacking) {
+      drawWeaponLine(ctx, 8, -29, 56 + Math.round(attack * 10), -38 - Math.round(attack * 3), "#8a7050", 3);
+      drawPixelBlock(ctx, 54 + Math.round(attack * 10), -43 - Math.round(attack * 3), 9, 10, "#e8d8c0");
+      drawAttackMotionTrail(ctx, 34, -42, 34, 11, "#e8d8c0", attack);
+    } else {
+      drawWeaponLine(ctx, 16, -50, 20, -5, "#8a7050", 3);
+      drawPixelBlock(ctx, 13, -55, 8, 10, "#e8d8c0");
+    }
     drawPixelBlock(ctx, -18, -25, 9, 12, palette.metalDark);
   } else if (unit.type === "archer") {
     drawPixelBlock(ctx, -16, -35, 5, 20, "#5b3c21");
     drawPixelBlock(ctx, -14, -37, 10, 3, "#d8d2c6");
-    ctx.strokeStyle = "#b58a52";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(16, -39);
-    ctx.quadraticCurveTo(27 + attack * 4, -28, 16, -13);
-    ctx.stroke();
-    ctx.strokeStyle = "#f3ead8";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(17, -38);
-    ctx.lineTo(20 - attack * 6, -26);
-    ctx.lineTo(17, -14);
-    ctx.stroke();
-    drawPixelBlock(ctx, 16, -27, 20, 2, "#d8d2c6");
+    if (attacking) {
+      const pull = Math.round(attack * 9);
+      drawBowShape(ctx, 16, -39, 16, -13, 28 + attack * 4, -27, "#b58a52", 2);
+      drawWeaponLine(ctx, 17, -38, 20 - pull, -26, "#f3ead8", 1);
+      drawWeaponLine(ctx, 20 - pull, -26, 17, -14, "#f3ead8", 1);
+      drawWeaponLine(ctx, 8 - pull, -27, 36, -27, "#d8d2c6", 2);
+      drawArrowHead(ctx, 38, -27, "#f3ead8");
+    } else {
+      drawBowShape(ctx, 16, -39, 16, -13, 27, -27, "#b58a52", 2);
+      drawWeaponLine(ctx, 17, -38, 17, -14, "#e6d6b8", 1);
+    }
   }
 }
 
 function drawPremiumGeneralWeapon(ctx, weapon, palette, attack) {
   const weaponColor = weapon.color || "#f3ead8";
+  const attacking = attack > 0.04;
   if ((weapon.range || 0) > 80) {
-    ctx.strokeStyle = "#b58a52";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(17, -50);
-    ctx.quadraticCurveTo(31 + attack * 4, -33, 17, -15);
-    ctx.stroke();
-    ctx.strokeStyle = weaponColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(18, -49);
-    ctx.lineTo(22 - attack * 6, -32);
-    ctx.lineTo(18, -16);
-    ctx.stroke();
+    if (attacking) {
+      const pull = Math.round(attack * 10);
+      drawBowShape(ctx, 17, -50, 17, -15, 32 + attack * 4, -33, "#b58a52", 3);
+      drawWeaponLine(ctx, 18, -49, 22 - pull, -32, weaponColor, 1);
+      drawWeaponLine(ctx, 22 - pull, -32, 18, -16, weaponColor, 1);
+      drawWeaponLine(ctx, 9 - pull, -33, 43, -33, weaponColor, 2);
+    } else {
+      drawBowShape(ctx, -20, -49, -20, -17, -28, -33, "#b58a52", 3);
+      drawWeaponLine(ctx, -20, -48, -20, -18, weaponColor, 1);
+    }
   } else if ((weapon.attack || 0) >= 18) {
-    drawPixelBlock(ctx, 16, -47 + Math.round(attack * 4), 5, 42, "#7a6040");
-    drawPixelBlock(ctx, 18, -55 + Math.round(attack * 4), 12, 14, weaponColor);
-    drawPixelBlock(ctx, 20, -42 + Math.round(attack * 4), 5, 17, lightenColor(weaponColor, 0.25));
+    if (attacking) {
+      drawWeaponLine(ctx, 14, -46, 39 + Math.round(attack * 8), -22 + Math.round(attack * 8), "#7a6040", 5);
+      drawPixelBlock(ctx, 35 + Math.round(attack * 8), -30 + Math.round(attack * 8), 14, 13, weaponColor);
+      drawPixelBlock(ctx, 38 + Math.round(attack * 8), -27 + Math.round(attack * 8), 7, 16, lightenColor(weaponColor, 0.25));
+      drawAttackMotionTrail(ctx, 20, -41, 36, 26, palette.glow, attack);
+    } else {
+      drawPixelBlock(ctx, 16, -55, 5, 48, "#7a6040");
+      drawPixelBlock(ctx, 12, -63, 13, 14, weaponColor);
+      drawPixelBlock(ctx, 15, -51, 7, 17, lightenColor(weaponColor, 0.25));
+    }
   } else {
-    drawPixelBlock(ctx, 14, -31 + Math.round(attack * 5), 34, 4, "#8a7050");
-    drawPixelBlock(ctx, 44, -35 + Math.round(attack * 5), 7, 11, weaponColor);
-    drawPixelBlock(ctx, 18, -35, 4, 12, palette.trim);
+    if (attacking) {
+      drawWeaponLine(ctx, 14, -31, 49 + Math.round(attack * 8), -41 + Math.round(attack * 6), "#8a7050", 4);
+      drawPixelBlock(ctx, 46 + Math.round(attack * 8), -47 + Math.round(attack * 6), 8, 12, weaponColor);
+      drawAttackMotionTrail(ctx, 20, -46, 34, 18, palette.glow, attack);
+    } else {
+      drawPixelBlock(ctx, 15, -34, 4, 39, "#8a7050");
+      drawPixelBlock(ctx, 12, -39, 10, 10, weaponColor);
+      drawPixelBlock(ctx, 18, -28, 4, 12, palette.trim);
+    }
   }
+}
+
+function drawWeaponLine(ctx, x1, y1, x2, y2, color, width) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBowShape(ctx, topX, topY, bottomX, bottomY, curveX, curveY, color, width) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(topX, topY);
+  ctx.quadraticCurveTo(curveX, curveY, bottomX, bottomY);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawArrowHead(ctx, x, y, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(Math.round(x + 5), Math.round(y));
+  ctx.lineTo(Math.round(x - 3), Math.round(y - 5));
+  ctx.lineTo(Math.round(x - 2), Math.round(y + 5));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawAttackMotionTrail(ctx, x, y, w, h, color, attack) {
+  const alpha = clamp(attack, 0, 1) * 0.32;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), 2);
+  ctx.fillRect(Math.round(x + w * 0.25), Math.round(y + h * 0.45), Math.round(w * 0.72), 2);
+  ctx.fillRect(Math.round(x + w * 0.5), Math.round(y + h * 0.86), Math.round(w * 0.4), 2);
+  ctx.restore();
 }
 
 function drawPremiumBackBanner(ctx, unit, palette, x, y, h) {
@@ -1433,8 +1684,16 @@ function drawBattleUi(ctx, game, battle) {
   }
 
   if (!battle.ended) {
+    const pauseButton = addButton(game.ui, 462, 34, 36, 28, battle.paused ? ">" : "||", "toggleBattlePause");
+    const attackLabel = battle.playerAttackOrdered ? "进攻中" : "发起进攻";
+    const attackButton = addButton(game.ui, 384, 474, 140, 30, attackLabel, "orderBattleAttack", battle.playerAttackOrdered);
     const fleeButton = addButton(game.ui, 54, 474, 92, 30, "逃跑", "fleeBattle");
+    drawButton(ctx, pauseButton, game.input);
+    drawButton(ctx, attackButton, game.input);
     drawButton(ctx, fleeButton, game.input);
+    if (battle.paused) {
+      drawPixelText(ctx, "暂停", 480, 84, "#ffd56a", 13, "center");
+    }
   }
 
   if (battle.ended) {
@@ -1449,7 +1708,7 @@ function drawBattleSummary(ctx, game, battle) {
   ctx.fillStyle = "rgba(0,0,0,0.58)";
   ctx.fillRect(20, 20, 920, 500);
 
-  drawPanel(ctx, 310, 130, 340, 250, isWin ? "战斗胜利" : fled ? "撤退成功" : "战斗失败");
+  drawPanel(ctx, 310, 130, 340, 250, isWin ? "战斗胜利" : fled ? "撤退成功" : "战斗失败", isWin ? "victory" : "battle");
   drawPixelText(ctx, isWin ? "胜利！" : fled ? "撤退" : "战败", 480, 158, isWin ? "#ffd56a" : fled ? "#f8e9bd" : "#ff8a74", 28, "center");
 
   const lines = summary && summary.lines && summary.lines.length
@@ -1493,7 +1752,7 @@ function drawEncounterDialog(ctx, game) {
   const panelX = 314;
   const panelY = 174;
   const panelW = 332;
-  drawPanel(ctx, panelX, panelY, panelW, 188, "遭遇敌军");
+  drawPanel(ctx, panelX, panelY, panelW, 188, "遭遇敌军", "battle");
 
   drawPixelText(ctx, enemy.name || "敌军", 480, 204, "#ff8a74", 22, "center");
   drawPixelText(ctx, "敌军挡住了去路，是否开战？", 480, 242, "#f8e9bd", 14, "center");
@@ -1515,7 +1774,7 @@ function drawVictoryBanner(ctx) {
   ctx.fillStyle = "rgba(0,0,0,0.5)";
   ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
 
-  drawPanel(ctx, 248, 150, 464, 184, "大陆统一");
+  drawPanel(ctx, 248, 150, 464, 184, "大陆统一", "victory");
 
   // 王冠
   const cx = 480;

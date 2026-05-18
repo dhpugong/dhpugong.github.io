@@ -1,5 +1,5 @@
 import { createInitialNpcs, growFactionTowns, spawnWildIfNeeded, updateNpcs } from "./modules/ai.js";
-import { finishBattle, fleeBattle, startBattle, updateBattle } from "./modules/battle.js";
+import { finishBattle, fleeBattle, orderBattleAttack, startBattle, toggleBattlePause, updateBattle } from "./modules/battle.js";
 import { CONFIG } from "./modules/config.js";
 import { consumeClick, consumeDoubleClick, consumeKey, consumeTextInput, createInput, getMovementVector } from "./modules/input.js";
 import { clampToMap, ensurePassablePosition, findNearestResource, findNearestTown, findSafeStep, getTile, isPassable } from "./modules/map.js";
@@ -8,7 +8,7 @@ import { createPlayer, processNewDay, refreshOwnedResources, refreshOwnedTowns }
 import { handlePrivilegeInput as processPrivilegeInput, redeemPrivilegeCode as redeemPrivilege } from "./modules/privilege.js";
 import { addWarReport } from "./modules/reports.js";
 import { createRenderer, renderGame } from "./modules/render.js";
-import { applySaveToGame, autoSaveIfNeeded, createFreshGameData, loadGameData, saveGame } from "./modules/save.js";
+import { applySaveToGame, autoSaveIfNeeded, createFreshGameData, deleteSaveSlot, loadGameData, loadResumeGameData, saveGame, saveResumeGame } from "./modules/save.js";
 import { enterTown, resetTownUi } from "./modules/town.js";
 import { distanceXY, moveToward } from "./modules/utils.js";
 import { clearArmyUiState, clearEnemyArmyPreview, createUi, getClickedButton, handleUiAction } from "./modules/ui.js";
@@ -65,7 +65,8 @@ var game = {
   wildSpawnTimer: CONFIG.wildSpawnInterval,
   autoSaveTimer: CONFIG.autoSaveInterval,
   lastTime: performance.now(),
-  lastFrameTime: performance.now()
+  lastFrameTime: performance.now(),
+  hasEnteredGame: false
 };
 
 game.npcs = createInitialNpcs(game.map);
@@ -76,6 +77,12 @@ refreshOwnedTowns(game.player, game.map.towns);
 requestAnimationFrame(loop);
 window.addEventListener("resize", handleDisplayResize);
 document.addEventListener("fullscreenchange", handleDisplayResize);
+window.addEventListener("pagehide", saveResumeSnapshot);
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "hidden") {
+    saveResumeSnapshot();
+  }
+});
 
 function handleDisplayResize() {
   updateDisplay(display);
@@ -152,7 +159,7 @@ function saveBeforeStartIfRequested() {
     return;
   }
   game.__requestSaveBeforeStart = false;
-  saveGame(game);
+  saveResumeSnapshot();
 }
 
 // ==================== 快捷键 ====================
@@ -203,25 +210,52 @@ function handleGlobalShortcuts() {
     }
   }
   if (consumeKey(input, "f5")) {
-    saveGame(game);
-    game.message = "手动保存完成";
-    setNotice("保存完成", ["本地存档已写入"], 1.8, "gold");
+    openSaveSlotDialog("save");
   }
   if (consumeKey(input, "f9")) {
-    loadIntoCurrentGame();
+    openSaveSlotDialog("load");
   }
 }
 
 function handleUiClick(click) {
   var button = getClickedButton(game.ui, click);
-  if (!button) return false;
+  if (!button) {
+    return Boolean(game.ui && game.ui.saveSlotDialogOpen);
+  }
+
+  if (game.ui && game.ui.saveSlotDialogOpen && !isSaveSlotDialogAction(button.action)) {
+    return true;
+  }
 
   if (button.action === "newGame") {
     startNewGame();
     return true;
   }
   if (button.action === "continueGame") {
-    loadIntoCurrentGame(true);
+    loadIntoCurrentGame("resume");
+    return true;
+  }
+  if (button.action === "loadSave") {
+    openSaveSlotDialog("load");
+    return true;
+  }
+  if (button.action === "closeSaveSlotDialog") {
+    closeSaveSlotDialog();
+    return true;
+  }
+  if (button.action && button.action.indexOf("saveGameSlot:") === 0) {
+    var saveSlotIndex = Number(button.action.split(":")[1]);
+    saveIntoSlot(saveSlotIndex);
+    return true;
+  }
+  if (button.action && button.action.indexOf("loadSaveSlot:") === 0) {
+    var slotIndex = Number(button.action.split(":")[1]);
+    loadIntoCurrentGame("slot", slotIndex);
+    return true;
+  }
+  if (button.action && button.action.indexOf("deleteSaveSlot:") === 0) {
+    var deleteSlotIndex = Number(button.action.split(":")[1]);
+    deleteSlot(deleteSlotIndex);
     return true;
   }
   if (button.action === "finishBattle") {
@@ -232,6 +266,14 @@ function handleUiClick(click) {
   if (button.action === "fleeBattle") {
     fleeBattle(game);
     clearUnitPath(game.player);
+    return true;
+  }
+  if (button.action === "orderBattleAttack") {
+    orderBattleAttack(game);
+    return true;
+  }
+  if (button.action === "toggleBattlePause") {
+    toggleBattlePause(game);
     return true;
   }
   if (button.action === "acceptEncounter") {
@@ -272,13 +314,11 @@ function handleUiClick(click) {
     return true;
   }
   if (button.action === "save") {
-    saveGame(game);
-    game.message = "手动保存完成";
-    setNotice("保存完成", ["本地存档已写入"], 1.8, "gold");
+    openSaveSlotDialog("save");
     return true;
   }
   if (button.action === "load") {
-    loadIntoCurrentGame();
+    openSaveSlotDialog("load");
     return true;
   }
   if (button.action === "redeemPrivilege") {
@@ -296,6 +336,52 @@ function handleUiClick(click) {
     return true;
   }
   return handleUiAction(game, button.action);
+}
+
+function isSaveSlotDialogAction(action) {
+  return action === "closeSaveSlotDialog"
+    || (action && action.indexOf("saveGameSlot:") === 0)
+    || (action && action.indexOf("loadSaveSlot:") === 0)
+    || (action && action.indexOf("deleteSaveSlot:") === 0);
+}
+
+function openSaveSlotDialog(mode) {
+  if (!game.ui) {
+    return;
+  }
+  game.ui.saveSlotDialogMode = mode === "save" ? "save" : "load";
+  game.ui.saveSlotDialogOpen = true;
+}
+
+function closeSaveSlotDialog() {
+  if (!game.ui) {
+    return;
+  }
+  game.ui.saveSlotDialogOpen = false;
+  game.ui.saveSlotDialogMode = null;
+}
+
+function saveIntoSlot(slotIndex) {
+  var data = saveGame(game, slotIndex);
+  if (!data) {
+    game.message = "请选择有效存档槽";
+    setNotice("保存失败", ["请选择有效存档槽"], 1.8, "gold");
+    return;
+  }
+  closeSaveSlotDialog();
+  game.message = "手动保存完成";
+  setNotice("保存完成", ["已写入存档 " + (slotIndex + 1)], 1.8, "gold");
+}
+
+function deleteSlot(slotIndex) {
+  var deleted = deleteSaveSlot(slotIndex);
+  if (!deleted) {
+    game.message = "该存档槽为空";
+    setNotice("删除失败", ["该存档槽为空"], 1.6, "gold");
+    return;
+  }
+  game.message = "已删除存档 " + (slotIndex + 1);
+  setNotice("删除完成", ["存档 " + (slotIndex + 1) + " 已清空"], 1.6, "gold");
 }
 
 // ==================== 大地图逻辑 ====================
@@ -603,11 +689,13 @@ function processDayCycle(dt) {
 
 // ==================== 读档 ====================
 
-function loadIntoCurrentGame(fromStart) {
-  var data = loadGameData();
+function loadIntoCurrentGame(source, slotIndex) {
+  var isResume = source === "resume";
+  var data = isResume ? loadResumeGameData() : loadGameData(slotIndex);
   if (!data) {
-    game.message = "没有可读取的本地存档";
-    setNotice("读取失败", ["没有可读取的本地存档"], 1.8, "gold");
+    var missingText = isResume ? "没有可继续的进度" : "没有可读取的正式存档";
+    game.message = missingText;
+    setNotice("读取失败", [missingText], 1.8, "gold");
     return;
   }
   applySaveToGame(game, data);
@@ -622,20 +710,30 @@ function loadIntoCurrentGame(fromStart) {
   game.capturingResource = null;
   game.encounter = null;
   if (game.ui) {
+    game.ui.saveSlotDialogOpen = false;
     resetTownUi(game);
     clearArmyUiState(game.ui);
     clearEnemyArmyPreview(game.ui);
   }
   game.travelDestination = null;
-  game.message = "读档完成，欢迎回来。";
+  game.message = isResume ? "继续游戏，欢迎回来。" : "读档完成，欢迎回来。";
   game.state = "world";
+  game.hasEnteredGame = true;
   focusCameraOn(game.camera, game.player.x, game.player.y, game.map, true);
-  setNotice("读档完成", ["已读取本地存档"], 1.8, "gold");
+  setNotice(isResume ? "继续游戏" : "读档完成", [isResume ? "已恢复上次退出进度" : "已读取正式存档"], 1.8, "gold");
+}
+
+function saveResumeSnapshot() {
+  if (!game || !game.hasEnteredGame || !game.player || !game.map) {
+    return;
+  }
+  saveResumeGame(game);
 }
 
 function startNewGame() {
   var freshGame = createFreshGameData();
   game.state = "world";
+  game.hasEnteredGame = true;
   game.map = freshGame.map;
   game.player = freshGame.player || createPlayer();
   game.player.usedPrivilegeCodes = [];
