@@ -2,14 +2,14 @@ import { CONFIG, FACTIONS } from "./config.js";
 import { WEAPONS } from "./config.js";
 import { buyMarketItem, ensurePlayerGoods, getMarketItem, getPlayerSellListings, getTownSellListings, sellMarketItem } from "./market.js";
 import { expToNextLevel, getTownDailyIncome } from "./player.js";
-import { getArmyPower, getArmySize, getMaxArmySize, getMaxTroopLevel, getRecruitOptions, getRosterLines, getSingleTroopUpgradeCost, getTroopLevelStats, isArmyMoraleFull, upgradeSingleTroop } from "./troop.js";
+import { getArmyPower, getArmySize, getMaxArmySize, getMaxTroopLevel, getRecruitOptions, getRosterLines, getSingleTroopUpgradeCost, getTroopBatchUpgradeCost, getTroopLevelStats, isArmyMoraleFull, upgradeSingleTroop, upgradeTroopBatch } from "./troop.js";
 import { developTown, getTownDevelopmentCost, leaveTown, recruitFromTown, resetTownUi, restAtTown } from "./town.js";
 import { NUMBER_FONT_FAMILY, UI_FONT_FAMILY, drawBar, drawPanel, drawPixelText, formatNumber, rectContains, setupCanvasFont } from "./utils.js";
 
 // UI 模块：维护按钮、HUD、城池面板和菜单面板的绘制与点击处理。
 
 const QUEST_PANEL = { x: 706, y: 64, w: 238, h: 116 };
-const ARMY_GRID_LAYOUT = { x: 214, y: 148, cols: 10, rows: 7, cell: 42, gap: 7 };
+const ARMY_GRID_LAYOUT = { x: 214, y: 156, cols: 10, rows: 7, cell: 42, gap: 7 };
 
 const EMPTY_WEAPON = {
   id: "none",
@@ -43,7 +43,7 @@ const QUALITY_NAMES = {
 const ATTR_IDS = ["strength", "agility", "intelligence", "leadership"];
 
 export function createUi() {
-  return { buttons: [], toastTimer: 0 };
+  return { buttons: [], toastTimer: 0, armyMultiSelect: false, selectedArmySoldierKeys: [] };
 }
 
 export function clearButtons(ui) {
@@ -510,6 +510,7 @@ function drawTownActionTile(ctx, button, caption) {
 function drawTownRecruitView(ctx, game, town) {
   drawPixelText(ctx, "招募兵种", 168, 170, "#ffd56a", 14);
   const recruitOptions = getRecruitOptions(town);
+  const armyFull = getArmySize(game.player.army) >= getMaxArmySize(game.player);
   recruitOptions.forEach((type, index) => {
     const y = 188 + index * 44;
 
@@ -524,8 +525,8 @@ function drawTownRecruitView(ctx, game, town) {
     drawPixelText(ctx, type.role, 272, y, "#b9a77a", 11);
     drawPixelText(ctx, type.cost + " 金/人   生命 " + type.hp + "   攻击 " + type.attack, 212, y + 18, "#d7c89e", 10);
 
-    const cannotBuy3 = game.player.gold < type.cost * 3;
-    const cannotBuy10 = game.player.gold < type.cost * 10;
+    const cannotBuy3 = armyFull || game.player.gold < type.cost * 3;
+    const cannotBuy10 = armyFull || game.player.gold < type.cost * 10;
     addButton(game.ui, 586, y, 76, 28, "招募x3", "recruit:" + type.id + ":3", cannotBuy3);
     addButton(game.ui, 670, y, 76, 28, "招募x10", "recruit:" + type.id + ":10", cannotBuy10);
   });
@@ -953,6 +954,7 @@ function drawEquipmentDetailPopup(ctx, game) {
 
 export function drawArmyUi(ctx, game) {
   clearButtons(game.ui);
+  ensureArmySelectionState(game.ui);
 
   const panelX = 176;
   const panelY = 48;
@@ -965,15 +967,26 @@ export function drawArmyUi(ctx, game) {
 
   drawPixelText(ctx, "部队编制", 214, 122, "#b9a77a", 11);
 
+  const soldiers = getArmySoldiers(game.player.army);
+  const armyPage = getArmyPage(game.ui, "armyPage", soldiers.length, ARMY_GRID_LAYOUT);
+  const visibleSoldiers = getArmyPageSoldiers(soldiers, armyPage, ARMY_GRID_LAYOUT);
+  const multiSelect = Boolean(game.ui.armyMultiSelect);
+  cleanSelectedArmySoldierKeys(game.ui, soldiers);
+  const selectedSoldier = getSelectedArmySoldier(game, soldiers);
+  const selectedSoldiers = multiSelect ? getSelectedArmySoldiers(game.ui, soldiers) : [];
+  const batchPreview = getTroopBatchUpgradeCost(game.player.army, getArmySoldierUpgradeGroups(selectedSoldiers));
+
+  drawArmyToolbar(ctx, game, soldiers, selectedSoldiers, batchPreview, ARMY_GRID_LAYOUT);
+
   if (!game.player.army.length) {
     drawPixelText(ctx, "暂无部队", 480, 236, "#b9a77a", 16, "center");
   }
 
-  const soldiers = getArmySoldiers(game.player.army);
-  const armyPage = getArmyPage(game.ui, "armyPage", soldiers.length, ARMY_GRID_LAYOUT);
-  const visibleSoldiers = getArmyPageSoldiers(soldiers, armyPage, ARMY_GRID_LAYOUT);
-  const selectedSoldier = getSelectedArmySoldier(game, soldiers);
-  drawArmySoldierGrid(ctx, game, visibleSoldiers, selectedSoldier, ARMY_GRID_LAYOUT);
+  drawArmySoldierGrid(ctx, game, visibleSoldiers, selectedSoldier, {
+    ...ARMY_GRID_LAYOUT,
+    selectedKeys: multiSelect ? new Set(game.ui.selectedArmySoldierKeys) : null,
+    actionPrefix: multiSelect ? "toggleArmySoldier:" : "selectArmySoldier:"
+  });
   drawArmyPager(ctx, game, soldiers.length, armyPage, ARMY_GRID_LAYOUT, "armyPage");
 
   const baseButtonCount = game.ui.buttons.length;
@@ -981,7 +994,7 @@ export function drawArmyUi(ctx, game) {
     drawButton(ctx, game.ui.buttons[i], game.input);
   }
 
-  if (selectedSoldier) {
+  if (!multiSelect && selectedSoldier) {
     drawArmySoldierCard(ctx, game, selectedSoldier, {
       title: "士兵信息",
       closeAction: "closeArmySoldier"
@@ -1045,6 +1058,27 @@ function getArmySoldiers(army) {
   return soldiers;
 }
 
+function ensureArmySelectionState(ui) {
+  if (!ui) {
+    return;
+  }
+  if (!Array.isArray(ui.selectedArmySoldierKeys)) {
+    ui.selectedArmySoldierKeys = [];
+  }
+  ui.armyMultiSelect = Boolean(ui.armyMultiSelect);
+}
+
+function cleanSelectedArmySoldierKeys(ui, soldiers) {
+  ensureArmySelectionState(ui);
+  const validKeys = new Set(soldiers.map(getArmySoldierKey));
+  ui.selectedArmySoldierKeys = ui.selectedArmySoldierKeys.filter((key, index, list) => (
+    validKeys.has(key) && list.indexOf(key) === index
+  ));
+  if (ui.selectedArmySoldierKey && !validKeys.has(ui.selectedArmySoldierKey)) {
+    ui.selectedArmySoldierKey = null;
+  }
+}
+
 function getSelectedArmySoldier(game, soldiers) {
   const selectedKey = game.ui.selectedArmySoldierKey;
   const selected = selectedKey
@@ -1056,17 +1090,107 @@ function getSelectedArmySoldier(game, soldiers) {
   return selected || null;
 }
 
+function getSelectedArmySoldiers(ui, soldiers) {
+  ensureArmySelectionState(ui);
+  const selectedKeys = new Set(ui.selectedArmySoldierKeys);
+  return soldiers.filter((soldier) => selectedKeys.has(getArmySoldierKey(soldier)));
+}
+
 function getArmySoldierKey(soldier) {
   return soldier.stackIndex + ":" + soldier.ordinal + ":" + soldier.unit.type + ":" + soldier.unit.level;
+}
+
+function getArmySoldierUpgradeGroups(soldiers) {
+  const groups = new Map();
+  soldiers.forEach(function (soldier) {
+    const unit = soldier.unit;
+    if (!unit || unit.level >= getMaxTroopLevel(unit.type)) {
+      return;
+    }
+    const key = unit.type + ":" + unit.level;
+    const group = groups.get(key) || { type: unit.type, level: unit.level, count: 0 };
+    group.count += 1;
+    groups.set(key, group);
+  });
+  return Array.from(groups.values());
 }
 
 function setSelectedArmySoldier(game, typeId, level) {
   const soldiers = getArmySoldiers(game.player.army);
   const soldier = soldiers.find((item) => item.unit.type === typeId && item.unit.level === level) || soldiers[0];
   game.ui.selectedArmySoldierKey = soldier ? getArmySoldierKey(soldier) : null;
+  game.ui.selectedArmySoldierKeys = [];
   if (soldier) {
     game.ui.armyPage = Math.floor(soldiers.indexOf(soldier) / getArmyPageSize(ARMY_GRID_LAYOUT));
   }
+}
+
+function toggleSelectedArmySoldier(game, key) {
+  ensureArmySelectionState(game.ui);
+  const soldiers = getArmySoldiers(game.player.army);
+  const validKeys = new Set(soldiers.map(getArmySoldierKey));
+  if (!validKeys.has(key)) {
+    cleanSelectedArmySoldierKeys(game.ui, soldiers);
+    return;
+  }
+  const keys = game.ui.selectedArmySoldierKeys;
+  const index = keys.indexOf(key);
+  if (index >= 0) {
+    keys.splice(index, 1);
+  } else {
+    keys.push(key);
+  }
+  game.ui.selectedArmySoldierKey = null;
+}
+
+function setArmyMultiSelect(game, enabled) {
+  ensureArmySelectionState(game.ui);
+  game.ui.armyMultiSelect = Boolean(enabled);
+  game.ui.selectedArmySoldierKey = null;
+  if (!enabled) {
+    game.ui.selectedArmySoldierKeys = [];
+  }
+}
+
+function selectVisibleArmySoldiers(game) {
+  ensureArmySelectionState(game.ui);
+  const soldiers = getArmySoldiers(game.player.army);
+  const page = getArmyPage(game.ui, "armyPage", soldiers.length, ARMY_GRID_LAYOUT);
+  const visibleSoldiers = getArmyPageSoldiers(soldiers, page, ARMY_GRID_LAYOUT);
+  game.ui.selectedArmySoldierKeys = visibleSoldiers.map(getArmySoldierKey);
+  game.ui.selectedArmySoldierKey = null;
+}
+
+function clearArmyMultiSelection(game) {
+  ensureArmySelectionState(game.ui);
+  game.ui.selectedArmySoldierKeys = [];
+}
+
+function drawArmyToolbar(ctx, game, soldiers, selectedSoldiers, batchPreview, layout) {
+  const multiSelect = Boolean(game.ui.armyMultiSelect);
+  const selectedCount = selectedSoldiers.length;
+  const canUpgrade = multiSelect && batchPreview.count > 0 && game.player.gold >= batchPreview.cost;
+  const x = layout.x + 68;
+  const y = layout.y - 34;
+  const modeButton = addButton(game.ui, x, y, 68, 24, multiSelect ? "退出多选" : "多选", "toggleArmyMultiSelect");
+  addButton(game.ui, x + 76, y, 68, 24, "本页全选", "selectVisibleArmySoldiers", !multiSelect || soldiers.length <= 0);
+  addButton(game.ui, x + 152, y, 44, 24, "清空", "clearArmyMultiSelection", !multiSelect || selectedCount <= 0);
+  addButton(game.ui, x + 204, y, 96, 24, "一键升级", "upgradeSelectedArmySoldiers", !canUpgrade);
+
+  ctx.save();
+  if (multiSelect) {
+    ctx.strokeStyle = "rgba(125,243,255,0.52)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(modeButton.x - 2.5, modeButton.y - 2.5, modeButton.w + 5, modeButton.h + 5);
+  }
+  const status = multiSelect
+    ? "已选 " + selectedCount + (batchPreview.count > 0 ? " / 可升级 " + batchPreview.count + " / " + batchPreview.cost + "金" : " / 无可升级")
+    : "点击士兵查看详情";
+  drawPixelText(ctx, status, layout.x, layout.y - 52, multiSelect ? "#7df3ff" : "#8f8060", 11);
+  if (multiSelect && batchPreview.count > 0 && game.player.gold < batchPreview.cost) {
+    drawPixelText(ctx, "金币不足", layout.x + 216, layout.y - 52, "#ff7568", 11);
+  }
+  ctx.restore();
 }
 
 function drawArmySoldierGrid(ctx, game, soldiers, selectedSoldier, options = {}) {
@@ -1080,6 +1204,7 @@ function drawArmySoldierGrid(ctx, game, soldiers, selectedSoldier, options = {})
   const clickable = options.clickable !== false;
   const actionPrefix = options.actionPrefix || "selectArmySoldier:";
   const selectedKey = selectedSoldier ? getArmySoldierKey(selectedSoldier) : "";
+  const selectedKeys = options.selectedKeys || null;
 
   soldiers.slice(0, maxVisible).forEach(function (soldier, index) {
     const col = index % cols;
@@ -1088,7 +1213,8 @@ function drawArmySoldierGrid(ctx, game, soldiers, selectedSoldier, options = {})
     const y = startY + row * (cell + gap);
     const rect = { x, y, w: cell, h: cell };
     const hovered = clickable && game.input && rectContains(rect, game.input.mouse.x, game.input.mouse.y);
-    const selected = selectedKey === getArmySoldierKey(soldier);
+    const soldierKey = getArmySoldierKey(soldier);
+    const selected = selectedKeys ? selectedKeys.has(soldierKey) : selectedKey === soldierKey;
     const stats = getTroopLevelStats(soldier.unit.type, soldier.unit.level);
 
     ctx.fillStyle = selected ? "rgba(255,213,106,0.16)" : hovered ? "rgba(125,243,255,0.12)" : "rgba(255,255,255,0.035)";
@@ -1098,10 +1224,27 @@ function drawArmySoldierGrid(ctx, game, soldiers, selectedSoldier, options = {})
     ctx.strokeRect(x + 0.5, y + 0.5, cell, cell);
     drawTroopPortrait(ctx, soldier.unit.type, x + cell / 2, y + 21, stats.color, 0.72);
     drawArmyLevelBadge(ctx, x + cell - 22, y + cell - 15, soldier.unit.level);
+    if (selectedKeys && selected) {
+      drawArmySelectionMark(ctx, x + 4, y + 4);
+    }
     if (clickable) {
-      addButton(game.ui, x, y, cell, cell, stats.name, actionPrefix + getArmySoldierKey(soldier), false, true);
+      addButton(game.ui, x, y, cell, cell, stats.name, actionPrefix + soldierKey, false, true);
     }
   });
+}
+
+function drawArmySelectionMark(ctx, x, y) {
+  ctx.save();
+  ctx.fillStyle = "rgba(125,243,255,0.86)";
+  ctx.fillRect(x, y, 11, 11);
+  ctx.strokeStyle = "#050b0d";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 6);
+  ctx.lineTo(x + 5, y + 9);
+  ctx.lineTo(x + 10, y + 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function getArmyPageSize(layout) {
@@ -1400,6 +1543,8 @@ export function handleUiAction(game, action) {
   }
   if (action === "closeArmy") {
     game.ui.selectedArmySoldierKey = null;
+    game.ui.selectedArmySoldierKeys = [];
+    game.ui.armyMultiSelect = false;
     game.state = "world";
     return true;
   }
@@ -1450,6 +1595,8 @@ export function handleUiAction(game, action) {
     resetTownUi(game);
     game.ui.selectedArmySoldierKey = null;
     game.ui.enemyArmyPreview = null;
+    game.ui.armyMultiSelect = false;
+    game.ui.selectedArmySoldierKeys = [];
     if (game.player) {
       game.player.target = null;
     }
@@ -1507,8 +1654,45 @@ export function handleUiAction(game, action) {
     }
     return true;
   }
+  if (action === "toggleArmyMultiSelect") {
+    setArmyMultiSelect(game, !game.ui.armyMultiSelect);
+    game.message = game.ui.armyMultiSelect ? "多选模式：选择士兵后一键升级" : "军队管理：花费金币升级部队";
+    return true;
+  }
+  if (action === "selectVisibleArmySoldiers") {
+    selectVisibleArmySoldiers(game);
+    return true;
+  }
+  if (action === "clearArmyMultiSelection") {
+    clearArmyMultiSelection(game);
+    return true;
+  }
+  if (action === "upgradeSelectedArmySoldiers") {
+    var soldiers = getArmySoldiers(game.player.army);
+    cleanSelectedArmySoldierKeys(game.ui, soldiers);
+    var selectedSoldiers = getSelectedArmySoldiers(game.ui, soldiers);
+    var batchResult = upgradeTroopBatch(game.player, getArmySoldierUpgradeGroups(selectedSoldiers));
+    game.notice = {
+      title: batchResult.ok ? "批量升级完成" : "无法升级",
+      lines: [batchResult.message],
+      timer: 1.8,
+      duration: 1.8,
+      kind: "gold"
+    };
+    game.message = batchResult.message;
+    if (batchResult.ok) {
+      game.ui.selectedArmySoldierKeys = [];
+      game.ui.selectedArmySoldierKey = null;
+    }
+    return true;
+  }
   if (action.indexOf("selectArmySoldier:") === 0) {
     game.ui.selectedArmySoldierKey = action.slice("selectArmySoldier:".length);
+    game.ui.selectedArmySoldierKeys = [];
+    return true;
+  }
+  if (action.indexOf("toggleArmySoldier:") === 0) {
+    toggleSelectedArmySoldier(game, action.slice("toggleArmySoldier:".length));
     return true;
   }
   if (action.indexOf("armyPage:") === 0) {

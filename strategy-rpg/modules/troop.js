@@ -131,6 +131,76 @@ export function getSingleTroopUpgradeCost(unit) {
   return Math.max(0, Math.round(nextStats.upgradeCost || 0));
 }
 
+export function getTroopBatchUpgradeCost(army, groups) {
+  const normalized = normalizeTroopUpgradeGroups(groups);
+  return normalized.reduce((total, group) => {
+    const unit = army.find((item) => item.type === group.type && item.level === group.level);
+    if (!unit || unit.count <= 0 || unit.level >= getMaxTroopLevel(unit.type)) {
+      return total;
+    }
+    const amount = Math.min(group.count, unit.count);
+    const cost = getSingleTroopUpgradeCost(unit) * amount;
+    return {
+      count: total.count + amount,
+      cost: total.cost + cost
+    };
+  }, { count: 0, cost: 0 });
+}
+
+export function upgradeTroopBatch(player, groups) {
+  const normalized = normalizeTroopUpgradeGroups(groups);
+  const preview = getTroopBatchUpgradeCost(player.army, normalized);
+  if (preview.count <= 0) {
+    return { ok: false, message: "没有可升级的士兵" };
+  }
+  if (player.gold < preview.cost) {
+    return { ok: false, message: "金币不足" };
+  }
+
+  const additions = [];
+  const upgradedGroups = [];
+  let spent = 0;
+  let upgraded = 0;
+
+  for (const group of normalized) {
+    const unit = player.army.find((item) => item.type === group.type && item.level === group.level);
+    if (!unit || unit.count <= 0 || unit.level >= getMaxTroopLevel(unit.type)) {
+      continue;
+    }
+    const amount = Math.min(group.count, unit.count);
+    if (amount <= 0) {
+      continue;
+    }
+    const cost = getSingleTroopUpgradeCost(unit) * amount;
+    unit.count -= amount;
+    spent += cost;
+    upgraded += amount;
+    const nextLevel = unit.level + 1;
+    additions.push({
+      type: unit.type,
+      count: amount,
+      level: nextLevel,
+      xp: 0,
+      morale: Math.min(100, unit.morale + 4)
+    });
+    upgradedGroups.push({ type: unit.type, level: nextLevel, count: amount });
+  }
+
+  player.gold -= spent;
+  player.army = mergeArmy([
+    ...player.army.filter((item) => item.count > 0),
+    ...additions
+  ]);
+
+  return {
+    ok: true,
+    message: `升级 ${upgraded} 名士兵，花费 ${spent} 金`,
+    upgraded,
+    spent,
+    upgradedGroups
+  };
+}
+
 export function upgradeSingleTroop(player, stackIndex) {
   const index = Number(stackIndex);
   const unit = player.army[index];
@@ -160,6 +230,30 @@ export function upgradeSingleTroop(player, stackIndex) {
   ]);
   const type = TROOP_TYPES[unit.type];
   return { ok: true, message: `${type.name} 升至 Lv.${upgraded.level}，花费 ${cost} 金`, upgraded };
+}
+
+function normalizeTroopUpgradeGroups(groups) {
+  const byKey = new Map();
+  for (const group of groups || []) {
+    if (!group || !TROOP_TYPES[group.type]) {
+      continue;
+    }
+    const level = Math.max(1, Math.floor(group.level || 1));
+    if (level >= getMaxTroopLevel(group.type)) {
+      continue;
+    }
+    const count = Math.max(0, Math.floor(group.count || 0));
+    if (count <= 0) {
+      continue;
+    }
+    const key = group.type + ":" + level;
+    byKey.set(key, {
+      type: group.type,
+      level,
+      count: (byKey.get(key)?.count || 0) + count
+    });
+  }
+  return Array.from(byKey.values());
 }
 
 export function upgradeArmyStack(player, stackIndex) {

@@ -184,6 +184,11 @@ function handleGlobalShortcuts() {
       game.state = game.previousState && game.previousState !== "settings" ? game.previousState : "world";
       game.previousState = null;
     } else if (game.state === "army") {
+      if (game.ui) {
+        game.ui.selectedArmySoldierKey = null;
+        game.ui.selectedArmySoldierKeys = [];
+        game.ui.armyMultiSelect = false;
+      }
       game.state = "world";
       game.message = "回到大地图";
     } else if (game.state === "town") {
@@ -637,6 +642,8 @@ function loadIntoCurrentGame(fromStart) {
   if (game.ui) {
     resetTownUi(game);
     game.ui.selectedArmySoldierKey = null;
+    game.ui.selectedArmySoldierKeys = [];
+    game.ui.armyMultiSelect = false;
     game.ui.enemyArmyPreview = null;
   }
   game.travelDestination = null;
@@ -675,6 +682,8 @@ function startNewGame() {
   if (game.ui) {
     resetTownUi(game);
     game.ui.selectedArmySoldierKey = null;
+    game.ui.selectedArmySoldierKeys = [];
+    game.ui.armyMultiSelect = false;
     game.ui.enemyArmyPreview = null;
   }
   game.notice = null;
