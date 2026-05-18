@@ -1,4 +1,4 @@
-import { CONFIG, WEAPONS } from "./config.js";
+import { ARMORS, CONFIG, TRINKETS, WEAPONS } from "./config.js";
 import { TOWN_INCOME, RESOURCE_INCOME } from "../data/economy.js";
 import { createInitialNpcs } from "./ai.js";
 import { createWorldMap, ensurePassablePosition } from "./map.js";
@@ -240,8 +240,17 @@ function normalizePlayerEquipment(player) {
   if (!player.equipment) {
     player.equipment = { weapon: getSavedWeaponName(player), armor: "未装备", trinket: "未装备" };
   }
+  if (!player.equipmentIds || typeof player.equipmentIds !== "object") {
+    player.equipmentIds = { armor: null, trinket: null };
+  }
   if (!player.equipment.weapon) {
     player.equipment.weapon = getSavedWeaponName(player);
+  }
+  if (player.equipmentIds.armor && !ARMORS[player.equipmentIds.armor]) {
+    player.equipmentIds.armor = null;
+  }
+  if (player.equipmentIds.trinket && !TRINKETS[player.equipmentIds.trinket]) {
+    player.equipmentIds.trinket = null;
   }
   if (!player.equipment.armor || player.equipment.armor === "旅人皮甲") {
     player.equipment.armor = "未装备";
@@ -249,6 +258,8 @@ function normalizePlayerEquipment(player) {
   if (!player.equipment.trinket || player.equipment.trinket === "铁冠纹章") {
     player.equipment.trinket = "未装备";
   }
+  player.equipment.armor = player.equipmentIds.armor ? ARMORS[player.equipmentIds.armor].name : player.equipment.armor;
+  player.equipment.trinket = player.equipmentIds.trinket ? TRINKETS[player.equipmentIds.trinket].name : player.equipment.trinket;
 }
 
 function getSavedWeaponName(player) {

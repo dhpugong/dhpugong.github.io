@@ -1,5 +1,4 @@
-import { CONFIG, FACTIONS } from "./config.js";
-import { WEAPONS } from "./config.js";
+import { CONFIG, FACTIONS, getEquipmentItem, getEquipmentSlotById, WEAPONS } from "./config.js";
 import { buyMarketItem, ensurePlayerGoods, getMarketItem, getPlayerSellListings, getTownSellListings, sellMarketItem } from "./market.js";
 import { setNotice } from "./notice.js";
 import { expToNextLevel, getTownDailyIncome } from "./player.js";
@@ -68,6 +67,13 @@ const QUALITY_NAMES = {
 };
 
 const ATTR_IDS = ["strength", "agility", "intelligence", "leadership"];
+const MARKET_PAGE_SIZE = 7;
+const INVENTORY_PAGE_SIZE = 9;
+const EQUIPMENT_SLOT_NAMES = {
+  weapon: "武器",
+  armor: "护甲",
+  trinket: "饰品"
+};
 
 export function createUi() {
   return { buttons: [], toastTimer: 0, armyMultiSelect: false, selectedArmySoldierKeys: [] };
@@ -512,6 +518,7 @@ export function drawTownUi(ctx, game) {
   if (view === "recruit") {
     drawTownRecruitView(ctx, game, town);
   } else if (view === "trade") {
+    ensureTradePageState(game.ui);
     drawTownTradeView(ctx, game, town);
   } else {
     drawTownHomeView(ctx, game, town);
@@ -598,17 +605,21 @@ function drawTownTradeView(ctx, game, town) {
   ensurePlayerGoods(game.player);
   const townListings = getTownSellListings(game, town);
   const playerListings = getPlayerSellListings(game, town);
+  const townPage = getPagedListPage(game.ui, "marketBuyPage", townListings.length, MARKET_PAGE_SIZE);
+  const playerPage = getPagedListPage(game.ui, "marketSellPage", playerListings.length, MARKET_PAGE_SIZE);
 
   drawPixelText(ctx, "城市出售", 168, 168, "#ffd56a", 14);
   drawPixelText(ctx, "背包出售", 506, 168, "#ffd56a", 14);
-  drawMarketList(ctx, game, townListings, 168, 190, "buyMarket", true);
-  drawMarketList(ctx, game, playerListings, 506, 190, "sellMarket", false);
+  drawInlinePager(ctx, game, townListings.length, townPage, MARKET_PAGE_SIZE, 330, 164, "marketBuyPage");
+  drawInlinePager(ctx, game, playerListings.length, playerPage, MARKET_PAGE_SIZE, 668, 164, "marketSellPage");
+  drawMarketList(ctx, game, townListings, townPage, 168, 190, "buyMarket", true);
+  drawMarketList(ctx, game, playerListings, playerPage, 506, 190, "sellMarket", false);
   drawPixelText(ctx, "收购价为当日售价的 80%-90%，不同城市价格不同。", 168, 452, UI_TEXT.muted, 11);
   addButton(game.ui, 592, 448, 78, 32, "返回", "townView:home");
   addButton(game.ui, 684, 448, 78, 32, "招募", "townView:recruit");
 }
 
-function drawMarketList(ctx, game, listings, x, y, actionPrefix, buying) {
+function drawMarketList(ctx, game, listings, page, x, y, actionPrefix, buying) {
   ctx.fillStyle = "rgba(255,255,255,0.03)";
   ctx.fillRect(x, y - 8, 286, 238);
   ctx.strokeStyle = "rgba(143,104,46,0.45)";
@@ -620,11 +631,15 @@ function drawMarketList(ctx, game, listings, x, y, actionPrefix, buying) {
     return;
   }
 
-  listings.slice(0, 7).forEach(function (listing, index) {
+  const start = page * MARKET_PAGE_SIZE;
+  listings.slice(start, start + MARKET_PAGE_SIZE).forEach(function (listing, index) {
     const rowY = y + index * 32;
     const item = listing.item;
     const selected = getSelectedMarketKey(game) === getMarketKey(listing.kind, listing.id);
     const rowRect = { x, y: rowY - 4, w: 202, h: 28 };
+    const rowCenterY = rowRect.y + rowRect.h / 2;
+    const textY = rowRect.y + 8;
+    const priceX = rowRect.x + rowRect.w - 6;
     const hovered = game.input && rectContains(rowRect, game.input.mouse.x, game.input.mouse.y);
 
     ctx.fillStyle = selected ? "rgba(255,213,106,0.13)" : hovered ? "rgba(138,98,54,0.24)" : "rgba(255,255,255,0.025)";
@@ -632,10 +647,10 @@ function drawMarketList(ctx, game, listings, x, y, actionPrefix, buying) {
     ctx.strokeStyle = selected ? "#ffd56a" : hovered ? "#d6a84f" : "rgba(143,104,46,0.32)";
     ctx.strokeRect(rowRect.x + 0.5, rowRect.y + 0.5, rowRect.w, rowRect.h);
 
-    drawMarketIcon(ctx, item, x + 14, rowY + 10, listing.kind);
-    drawPixelText(ctx, item.name + (listing.count ? " x" + listing.count : ""), x + 30, rowY, getMarketItemColor(listing), 12);
-    drawPixelText(ctx, listing.price + "金", x + 180, rowY, buying ? "#ffd56a" : "#74d17a", 12, "right");
-    const disabled = buying && (game.player.gold < listing.price || (listing.kind === "weapon" && playerOwnsMarketItem(game.player, "weapon", listing.id)));
+    drawMarketIcon(ctx, item, x + 14, rowCenterY, listing.kind);
+    drawPixelText(ctx, item.name + (listing.count ? " x" + listing.count : ""), x + 30, textY, getMarketItemColor(listing), 12);
+    drawPixelText(ctx, listing.price + "金", priceX, textY, buying ? "#ffd56a" : "#74d17a", 12, "right");
+    const disabled = buying && (game.player.gold < listing.price || (isEquipmentKind(listing.kind) && playerOwnsMarketItem(game.player, listing.kind, listing.id)));
     addButton(game.ui, rowRect.x, rowRect.y, rowRect.w, rowRect.h, item.name, "selectMarketItem:" + listing.kind + ":" + listing.id, false, true);
     addButton(game.ui, x + 214, rowY - 3, 58, 26, buying ? "买入" : "卖出", actionPrefix + ":" + listing.kind + ":" + listing.id, disabled);
   });
@@ -645,13 +660,22 @@ function drawMarketIcon(ctx, item, x, y, kind) {
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.42)";
   ctx.fillRect(x - 7, y - 7, 14, 14);
-  ctx.strokeStyle = kind === "weapon" ? getWeaponNameColor(item) : item.color || UI_TEXT.body;
+  ctx.strokeStyle = isEquipmentKind(kind) ? getEquipmentNameColor(item) : item.color || UI_TEXT.body;
   ctx.lineWidth = 1;
   ctx.strokeRect(x - 6.5, y - 6.5, 14, 14);
-  ctx.fillStyle = kind === "weapon" ? getWeaponNameColor(item) : item.color || UI_TEXT.body;
+  ctx.fillStyle = isEquipmentKind(kind) ? getEquipmentNameColor(item) : item.color || UI_TEXT.body;
   if (kind === "weapon") {
     ctx.fillRect(x - 1, y - 7, 3, 12);
     ctx.fillRect(x - 5, y - 4, 11, 2);
+  } else if (kind === "armor") {
+    ctx.fillRect(x - 5, y - 5, 10, 10);
+    ctx.fillStyle = "rgba(0,0,0,0.32)";
+    ctx.fillRect(x - 2, y - 2, 4, 7);
+  } else if (kind === "trinket") {
+    ctx.fillRect(x - 3, y - 5, 6, 3);
+    ctx.fillRect(x - 4, y - 1, 8, 8);
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.fillRect(x - 1, y + 1, 2, 2);
   } else {
     ctx.fillRect(x - 4, y - 4, 8, 8);
     ctx.fillStyle = "rgba(255,255,255,0.28)";
@@ -671,19 +695,19 @@ function drawMarketDetailPopup(ctx, game) {
   const w = 348;
   const h = 248;
   const item = selected.item;
-  const isWeapon = selected.kind === "weapon";
+  const isEquipment = isEquipmentKind(selected.kind);
 
   ctx.fillStyle = "rgba(0,0,0,0.48)";
   ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
   addButton(game.ui, 0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight, "关闭物品信息", "closeMarketDetail", false, true);
-  drawPanel(ctx, x, y, w, h, isWeapon ? "装备信息" : "商品信息", "town");
+  drawPanel(ctx, x, y, w, h, isEquipment ? "装备信息" : "商品信息", "town");
   addPanelCloseButton(game.ui, x, y, w, "closeMarketDetail");
 
   const contentX = x + 34;
   const contentY = y + 44;
   drawMarketIcon(ctx, item, contentX + 12, contentY + 12, selected.kind);
   drawPixelText(ctx, item.name, contentX + 36, contentY, getMarketItemColor(selected), 20);
-  drawPixelText(ctx, isWeapon ? getQualityName(item) + " / 装备" : "跑商商品", contentX + 36, contentY + 32, UI_TEXT.muted, 12);
+  drawPixelText(ctx, isEquipment ? getQualityName(item) + " / " + getEquipmentSlotName(item) : "跑商商品", contentX + 36, contentY + 32, UI_TEXT.muted, 12);
 
   const boxY = contentY + 62;
   ctx.fillStyle = "rgba(255,255,255,0.04)";
@@ -692,7 +716,7 @@ function drawMarketDetailPopup(ctx, game) {
   ctx.lineWidth = 1;
   ctx.strokeRect(contentX + 0.5, boxY + 0.5, w - 68, 92);
 
-  if (isWeapon) {
+  if (isEquipment) {
     formatEquipmentStats(item).forEach(function (line, index) {
       const col = index % 2;
       const row = Math.floor(index / 2);
@@ -729,7 +753,7 @@ function getMarketKey(kind, id) {
 }
 
 function getMarketItemColor(listing) {
-  return listing.kind === "weapon" ? getWeaponNameColor(listing.item) : listing.item.color || UI_TEXT.main;
+  return isEquipmentKind(listing.kind) ? getEquipmentNameColor(listing.item) : listing.item.color || UI_TEXT.main;
 }
 
 function getPlayerGoodsEntries(player) {
@@ -745,8 +769,8 @@ function playerOwnsMarketItem(player, kind, id) {
     ensurePlayerGoods(player);
     return (player.goods[id] || 0) > 0;
   }
-  if (kind === "weapon") {
-    return (player.inventory || []).includes(id);
+  if (isEquipmentKind(kind)) {
+    return playerOwnsEquipment(player, id);
   }
   return false;
 }
@@ -766,6 +790,44 @@ function getMarketPriceLine(game, selected) {
     parts.push("收购 " + sellListing.price + " 金");
   }
   return parts.join(" / ");
+}
+
+function ensureTradePageState(ui) {
+  if (!ui) {
+    return;
+  }
+  if (!Number.isFinite(ui.marketBuyPage)) {
+    ui.marketBuyPage = 0;
+  }
+  if (!Number.isFinite(ui.marketSellPage)) {
+    ui.marketSellPage = 0;
+  }
+}
+
+function getPagedListPage(ui, key, total, pageSize) {
+  if (!ui) {
+    return 0;
+  }
+  const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+  const current = Math.max(0, Math.min(maxPage, Math.floor(Number(ui[key] || 0))));
+  ui[key] = current;
+  return current;
+}
+
+function stepPagedListPage(ui, key, total, pageSize, direction) {
+  const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+  const current = Math.max(0, Math.min(maxPage, Math.floor(Number(ui[key] || 0))));
+  ui[key] = Math.max(0, Math.min(maxPage, current + direction));
+}
+
+function drawInlinePager(ctx, game, total, page, pageSize, x, y, key) {
+  const pageCount = Math.ceil(total / pageSize);
+  if (pageCount <= 1) {
+    return;
+  }
+  addButton(game.ui, x, y, 22, 20, "<", key + ":prev", page <= 0);
+  drawPixelText(ctx, (page + 1) + "/" + pageCount, x + 50, y + 4, "#d9f0ff", 10, "center");
+  addButton(game.ui, x + 78, y, 22, 20, ">", key + ":next", page >= pageCount - 1);
 }
 
 function wrapText(text, maxChars) {
@@ -791,9 +853,10 @@ export function drawMenuUi(ctx, game) {
   addPanelCloseButton(game.ui, panelX, panelY, panelW, "closeMenu");
 
   const general = game.player.general || { name: "沈铁冠", weapon: "oldSword" };
-  const equippedWeaponId = getEquippedWeaponId(game.player);
   const selectedEquipmentId = getSelectedEquipmentId(game);
   const weapon = getEquippedWeapon(game.player);
+  const armor = getEquippedGear(game.player, "armor");
+  const trinket = getEquippedGear(game.player, "trinket");
   const generalStats = getPlayerGeneralPreview(game.player);
 
   // 将领与装备
@@ -804,10 +867,12 @@ export function drawMenuUi(ctx, game) {
   drawPlayerStatGrid(ctx, generalStats, 194, 144);
 
   drawPixelText(ctx, "装备槽", 176, 266, "#ffd56a", 15);
-  drawEquipmentSlot(ctx, 194, 292, "武器", weapon.name, getWeaponNameColor(weapon), game.input, Boolean(equippedWeaponId), equippedWeaponId === selectedEquipmentId);
-  addButton(game.ui, 194, 292, 124, 52, "查看武器", equippedWeaponId ? "selectEquipment:" + equippedWeaponId : "", !equippedWeaponId, true);
-  drawEquipmentSlot(ctx, 194, 354, "护甲", game.player.equipment.armor, getGearSlotColor(game.player.equipment.armor, "#7a8a9a"));
-  drawEquipmentSlot(ctx, 194, 416, "饰品", game.player.equipment.trinket, getGearSlotColor(game.player.equipment.trinket, "#8e5ab8"));
+  drawEquipmentSlot(ctx, 194, 292, "武器", weapon.name, getEquipmentNameColor(weapon), game.input, Boolean(weapon.id !== "none"), weapon.id === selectedEquipmentId);
+  addButton(game.ui, 194, 292, 124, 52, "查看武器", weapon.id !== "none" ? "selectEquipment:" + weapon.id : "", weapon.id === "none", true);
+  drawEquipmentSlot(ctx, 194, 354, "护甲", armor.name, getEquipmentNameColor(armor), game.input, Boolean(armor.id !== "none"), armor.id === selectedEquipmentId);
+  addButton(game.ui, 194, 354, 124, 52, "查看护甲", armor.id !== "none" ? "selectEquipment:" + armor.id : "", armor.id === "none", true);
+  drawEquipmentSlot(ctx, 194, 416, "饰品", trinket.name, getEquipmentNameColor(trinket), game.input, Boolean(trinket.id !== "none"), trinket.id === selectedEquipmentId);
+  addButton(game.ui, 194, 416, 124, 52, "查看饰品", trinket.id !== "none" ? "selectEquipment:" + trinket.id : "", trinket.id === "none", true);
 
   // 属性分配
   drawPixelText(ctx, "属性分配（剩余 " + game.player.skillPoints + "）", 456, 72, "#ffd56a", 15);
@@ -857,21 +922,28 @@ function getPlayerGeneralPreview(player) {
   const general = player.general || { level: Math.max(1, player.level || 1), weapon: null };
   const attrs = player.attributes || { strength: 0, agility: 0, intelligence: 0, leadership: 0 };
   const weapon = getEquippedWeapon(player);
+  const armor = getEquippedGear(player, "armor");
+  const trinket = getEquippedGear(player, "trinket");
   const level = general.level || player.level || 1;
   const expNext = expToNextLevel(player);
+  const gearAttack = (weapon.attack || 0) + (armor.attack || 0) + (trinket.attack || 0);
+  const gearDefense = (weapon.defense || 0) + (armor.defense || 0) + (trinket.defense || 0);
+  const gearHp = (armor.hp || 0) + (trinket.hp || 0);
+  const gearSpeed = (armor.speed || 0) + (trinket.speed || 0);
+  const gearCrit = (weapon.crit || 0) + (armor.crit || 0) + (trinket.crit || 0);
   const attackBonus = attrs.strength * 1.2 + attrs.intelligence * 0.6;
-  const hpBonus = attrs.leadership * 8 + attrs.strength * 3;
-  const speedBonus = attrs.agility * 0.9;
+  const hpBonus = attrs.leadership * 8 + attrs.strength * 3 + gearHp;
+  const speedBonus = attrs.agility * 0.9 + gearSpeed;
   const playerAttackMul = 1 + attrs.strength * 0.018;
   const playerSpeedMul = 1 + attrs.agility * 0.012;
   const moraleHpMul = 1 + attrs.leadership * 0.8 / 220;
   return {
-    hp: Math.round((130 + level * 22 + weapon.defense * 8 + hpBonus) * moraleHpMul),
-    attack: Math.round((18 + level * 4 + weapon.attack + attackBonus) * playerAttackMul),
-    defense: Math.round(6 + level + weapon.defense + attrs.leadership * 0.7),
+    hp: Math.round((130 + level * 22 + gearDefense * 8 + hpBonus) * moraleHpMul),
+    attack: Math.round((18 + level * 4 + gearAttack + attackBonus) * playerAttackMul),
+    defense: Math.round(6 + level + gearDefense + attrs.leadership * 0.7),
     speed: Math.round((38 + level * 1.5 + speedBonus) * playerSpeedMul),
     range: weapon.range,
-    crit: Math.round((0.08 + weapon.crit + attrs.agility * 0.006 + attrs.intelligence * 0.003) * 100),
+    crit: Math.round((0.08 + gearCrit + attrs.agility * 0.006 + attrs.intelligence * 0.003) * 100),
     level,
     exp: Math.floor(player.exp || 0),
     expNext,
@@ -903,26 +975,28 @@ function drawPlayerStatGrid(ctx, stats, x, y) {
 }
 
 function drawEquipmentInventory(ctx, game) {
-  const equipped = getEquippedWeaponId(game.player);
-  const weaponIds = getInventoryWeaponIds(game.player).filter((id) => id !== equipped);
+  const equipmentIds = getInventoryEquipmentIds(game.player).filter((id) => !isEquippedEquipment(game.player, id));
   const goods = getPlayerGoodsEntries(game.player);
+  const equipmentPage = getPagedListPage(game.ui, "inventoryEquipmentPage", equipmentIds.length, INVENTORY_PAGE_SIZE);
+  const goodsPage = getPagedListPage(game.ui, "inventoryGoodsPage", goods.length, INVENTORY_PAGE_SIZE);
 
-  drawPixelText(ctx, "背包", 456, 286, "#ffd56a", 15);
+  drawPixelText(ctx, "背包", 456, 248, "#ffd56a", 15);
   ctx.fillStyle = "rgba(255,255,255,0.03)";
-  ctx.fillRect(456, 310, 308, 138);
+  ctx.fillRect(456, 272, 308, 198);
 
-  if (!weaponIds.length && !goods.length) {
-    drawPixelText(ctx, "背包为空", 610, 364, UI_TEXT.empty, 12, "center");
+  if (!equipmentIds.length && !goods.length) {
+    drawPixelText(ctx, "背包为空", 610, 362, UI_TEXT.empty, 12, "center");
     return;
   }
 
-  drawPixelText(ctx, "装备", 470, 316, UI_TEXT.label, 10);
-  weaponIds.slice(0, 6).forEach(function (id, index) {
-    const weapon = WEAPONS[id];
+  drawPixelText(ctx, "装备", 470, 278, UI_TEXT.label, 10);
+  drawInlinePager(ctx, game, equipmentIds.length, equipmentPage, INVENTORY_PAGE_SIZE, 656, 274, "inventoryEquipmentPage");
+  equipmentIds.slice(equipmentPage * INVENTORY_PAGE_SIZE, (equipmentPage + 1) * INVENTORY_PAGE_SIZE).forEach(function (id, index) {
+    const item = getEquipmentItem(id);
     const col = index % 3;
     const row = Math.floor(index / 3);
     const x = 470 + col * 94;
-    const y = 332 + row * 28;
+    const y = 294 + row * 28;
     const rect = { x, y, w: 84, h: 26 };
     const selected = getSelectedEquipmentId(game) === id;
     const hovered = game.input && rectContains(rect, game.input.mouse.x, game.input.mouse.y);
@@ -933,17 +1007,18 @@ function drawEquipmentInventory(ctx, game) {
     ctx.strokeStyle = selected ? "#ffd56a" : hovered ? "#d6a84f" : "#5f3f17";
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, drawY + 0.5, 84, 26);
-    drawPixelText(ctx, weapon.name, x + 6, drawY + 7, getWeaponNameColor(weapon), 10);
+    drawPixelText(ctx, item.name, x + 6, drawY + 7, getEquipmentNameColor(item), 10);
     addButton(game.ui, x, y, 84, 26, "查看装备", "selectEquipment:" + id, false, true);
   });
 
-  drawPixelText(ctx, "商品", 470, 392, UI_TEXT.label, 10);
-  goods.slice(0, 6).forEach(function (entry, index) {
+  drawPixelText(ctx, "商品", 470, 398, UI_TEXT.label, 10);
+  drawInlinePager(ctx, game, goods.length, goodsPage, INVENTORY_PAGE_SIZE, 656, 394, "inventoryGoodsPage");
+  goods.slice(goodsPage * INVENTORY_PAGE_SIZE, (goodsPage + 1) * INVENTORY_PAGE_SIZE).forEach(function (entry, index) {
     const item = entry.item;
     const col = index % 3;
     const row = Math.floor(index / 3);
     const x = 470 + col * 94;
-    const y = 408 + row * 28;
+    const y = 414 + row * 26;
     const rect = { x, y, w: 84, h: 24 };
     const selected = getSelectedMarketKey(game) === getMarketKey("good", item.id);
     const hovered = game.input && rectContains(rect, game.input.mouse.x, game.input.mouse.y);
@@ -961,9 +1036,9 @@ function drawEquipmentInventory(ctx, game) {
 
 function drawEquipmentDetailPopup(ctx, game) {
   const selectedId = getSelectedEquipmentId(game);
-  const weapon = selectedId ? WEAPONS[selectedId] : null;
+  const item = selectedId ? getEquipmentItem(selectedId) : null;
 
-  if (!weapon) {
+  if (!item) {
     return;
   }
 
@@ -971,7 +1046,7 @@ function drawEquipmentDetailPopup(ctx, game) {
   const y = 144;
   const w = 348;
   const h = 248;
-  const equipped = getEquippedWeaponId(game.player) === weapon.id;
+  const equipped = isEquippedEquipment(game.player, item.id);
 
   ctx.fillStyle = "rgba(0,0,0,0.48)";
   ctx.fillRect(0, 0, 960, 540);
@@ -981,8 +1056,8 @@ function drawEquipmentDetailPopup(ctx, game) {
 
   const contentX = x + 34;
   const contentY = y + 44;
-  drawPixelText(ctx, weapon.name, contentX, contentY, getWeaponNameColor(weapon), 20);
-  drawPixelText(ctx, getQualityName(weapon) + " / 武器", contentX, contentY + 34, UI_TEXT.muted, 12);
+  drawPixelText(ctx, item.name, contentX, contentY, getEquipmentNameColor(item), 20);
+  drawPixelText(ctx, getQualityName(item) + " / " + getEquipmentSlotName(item), contentX, contentY + 34, UI_TEXT.muted, 12);
 
   const statsBoxY = contentY + 58;
   ctx.fillStyle = "rgba(255,255,255,0.04)";
@@ -991,7 +1066,7 @@ function drawEquipmentDetailPopup(ctx, game) {
   ctx.lineWidth = 1;
   ctx.strokeRect(contentX + 0.5, statsBoxY + 0.5, w - 68, 78);
 
-  const stats = formatEquipmentStats(weapon);
+  const stats = formatEquipmentStats(item);
   stats.forEach(function (line, index) {
     const col = index % 2;
     const row = Math.floor(index / 2);
@@ -1657,6 +1732,8 @@ export function handleUiAction(game, action) {
   if (action.indexOf("townView:") === 0) {
     game.ui.townView = action.split(":")[1] || "home";
     game.ui.selectedMarketItem = null;
+    game.ui.marketBuyPage = 0;
+    game.ui.marketSellPage = 0;
     return true;
   }
   if (action === "rest") {
@@ -1769,6 +1846,30 @@ export function handleUiAction(game, action) {
     clearEnemyArmyPreview(game.ui);
     return true;
   }
+  if (action.indexOf("marketBuyPage:") === 0) {
+    const listings = game.activeTown ? getTownSellListings(game, game.activeTown) : [];
+    stepPagedListPage(game.ui, "marketBuyPage", listings.length, MARKET_PAGE_SIZE, action.endsWith(":next") ? 1 : -1);
+    game.ui.selectedMarketItem = null;
+    return true;
+  }
+  if (action.indexOf("marketSellPage:") === 0) {
+    const listings = game.activeTown ? getPlayerSellListings(game, game.activeTown) : [];
+    stepPagedListPage(game.ui, "marketSellPage", listings.length, MARKET_PAGE_SIZE, action.endsWith(":next") ? 1 : -1);
+    game.ui.selectedMarketItem = null;
+    return true;
+  }
+  if (action.indexOf("inventoryEquipmentPage:") === 0) {
+    const equipmentIds = getInventoryEquipmentIds(game.player).filter((id) => !isEquippedEquipment(game.player, id));
+    stepPagedListPage(game.ui, "inventoryEquipmentPage", equipmentIds.length, INVENTORY_PAGE_SIZE, action.endsWith(":next") ? 1 : -1);
+    setSelectedEquipment(game, null);
+    return true;
+  }
+  if (action.indexOf("inventoryGoodsPage:") === 0) {
+    const goods = getPlayerGoodsEntries(game.player);
+    stepPagedListPage(game.ui, "inventoryGoodsPage", goods.length, INVENTORY_PAGE_SIZE, action.endsWith(":next") ? 1 : -1);
+    game.ui.selectedMarketItem = null;
+    return true;
+  }
   if (action.indexOf("selectMarketItem:") === 0) {
     var marketParts = action.split(":");
     game.ui.selectedMarketItem = { kind: marketParts[1], id: marketParts[2] };
@@ -1808,13 +1909,16 @@ export function handleUiAction(game, action) {
   if (action === "equipSelectedEquipment") {
     var selectedEquipId = getSelectedEquipmentId(game);
     if (selectedEquipId) {
-      equipPlayerWeapon(game.player, selectedEquipId);
+      equipPlayerItem(game.player, selectedEquipId);
       setSelectedEquipment(game, null);
     }
     return true;
   }
   if (action === "unequipSelectedEquipment") {
-    unequipPlayerWeapon(game.player);
+    var selectedUnequipId = getSelectedEquipmentId(game);
+    if (selectedUnequipId) {
+      unequipPlayerItem(game.player, selectedUnequipId);
+    }
     setSelectedEquipment(game, null);
     return true;
   }
@@ -1829,64 +1933,72 @@ export function handleUiAction(game, action) {
   return false;
 }
 
-function equipPlayerWeapon(player, weaponId) {
-  if (!WEAPONS[weaponId]) {
-    return { ok: false, message: "未知武器" };
+function equipPlayerItem(player, itemId) {
+  const item = getEquipmentItem(itemId);
+  const slot = getEquipmentSlotById(itemId);
+  if (!item || !slot) {
+    return { ok: false, message: "未知装备" };
   }
   ensurePlayerEquipmentState(player);
-  if (!player.inventory.includes(weaponId)) {
-    return { ok: false, message: "尚未获得该武器" };
+  if (!player.inventory.includes(itemId)) {
+    return { ok: false, message: "尚未获得该装备" };
   }
 
-  const currentWeaponId = getEquippedWeaponId(player);
-  if (currentWeaponId === weaponId) {
-    removeWeaponFromInventory(player, weaponId);
-    return { ok: true, message: WEAPONS[weaponId].name + " 已在装备槽" };
+  const currentId = getEquippedItemId(player, slot);
+  if (currentId === itemId) {
+    removeEquipmentFromInventory(player, itemId);
+    return { ok: true, message: item.name + " 已在装备槽" };
   }
 
-  removeWeaponFromInventory(player, weaponId);
-  if (currentWeaponId) {
-    addWeaponToInventory(player, currentWeaponId);
+  removeEquipmentFromInventory(player, itemId);
+  if (currentId) {
+    addEquipmentToInventory(player, currentId);
   }
 
-  player.general.weapon = weaponId;
-  player.equipment.weapon = WEAPONS[weaponId].name;
-  return { ok: true, message: "已装备 " + WEAPONS[weaponId].name };
+  setEquippedItemId(player, slot, itemId);
+  player.equipment[slot] = item.name;
+  return { ok: true, message: "已装备 " + item.name };
 }
 
-function selectEquipment(game, weaponId) {
-  if (!WEAPONS[weaponId]) {
+function selectEquipment(game, itemId) {
+  if (!getEquipmentItem(itemId)) {
     return false;
   }
-  setSelectedEquipment(game, weaponId);
+  setSelectedEquipment(game, itemId);
   return true;
 }
 
 function getSelectedEquipmentId(game) {
   const selected = game.ui && game.ui.selectedEquipmentId;
-  return selected && WEAPONS[selected] ? selected : null;
+  return selected && getEquipmentItem(selected) ? selected : null;
 }
 
-function setSelectedEquipment(game, weaponId) {
+function setSelectedEquipment(game, itemId) {
   if (!game.ui) {
     return;
   }
-  game.ui.selectedEquipmentId = weaponId && WEAPONS[weaponId] ? weaponId : null;
+  game.ui.selectedEquipmentId = itemId && getEquipmentItem(itemId) ? itemId : null;
 }
 
-function unequipPlayerWeapon(player) {
+function unequipPlayerItem(player, itemId) {
   ensurePlayerEquipmentState(player);
-  const currentWeaponId = getEquippedWeaponId(player);
-  if (!currentWeaponId) {
-    player.general.weapon = null;
-    player.equipment.weapon = EMPTY_WEAPON.name;
-    return { ok: false, message: "武器槽已经为空" };
+  const item = getEquipmentItem(itemId);
+  const slot = getEquipmentSlotById(itemId);
+  if (!item || !slot) {
+    return { ok: false, message: "未知装备" };
+  }
+  const currentId = getEquippedItemId(player, slot);
+  if (!currentId) {
+    setEquippedItemId(player, slot, null);
+    player.equipment[slot] = EMPTY_WEAPON.name;
+    return { ok: false, message: EQUIPMENT_SLOT_NAMES[slot] + "槽已经为空" };
   }
 
-  addWeaponToInventory(player, currentWeaponId);
-  player.general.weapon = null;
-  player.equipment.weapon = EMPTY_WEAPON.name;
-  return { ok: true, message: "已卸下 " + WEAPONS[currentWeaponId].name };
+  const currentItem = getEquipmentItem(currentId);
+  addEquipmentToInventory(player, currentId);
+  setEquippedItemId(player, slot, null);
+  player.equipment[slot] = EMPTY_WEAPON.name;
+  return { ok: true, message: "已卸下 " + (currentItem ? currentItem.name : item.name) };
 }
 
 function ensurePlayerEquipmentState(player) {
@@ -1899,12 +2011,25 @@ function ensurePlayerEquipmentState(player) {
   if (!player.equipment) {
     player.equipment = { weapon: "旧王短剑", armor: EMPTY_WEAPON.name, trinket: EMPTY_WEAPON.name };
   }
+  if (!player.equipmentIds || typeof player.equipmentIds !== "object") {
+    player.equipmentIds = { armor: null, trinket: null };
+  }
   normalizeEmptyGearSlots(player);
   if (player.general.weapon && !WEAPONS[player.general.weapon]) {
     player.general.weapon = null;
     player.equipment.weapon = EMPTY_WEAPON.name;
   }
-  player.inventory = getInventoryWeaponIds(player);
+  if (player.equipmentIds.armor && !getEquipmentItem(player.equipmentIds.armor)) {
+    player.equipmentIds.armor = null;
+    player.equipment.armor = EMPTY_WEAPON.name;
+  }
+  if (player.equipmentIds.trinket && !getEquipmentItem(player.equipmentIds.trinket)) {
+    player.equipmentIds.trinket = null;
+    player.equipment.trinket = EMPTY_WEAPON.name;
+  }
+  player.equipment.armor = getEquippedGear(player, "armor").name;
+  player.equipment.trinket = getEquippedGear(player, "trinket").name;
+  player.inventory = getInventoryEquipmentIds(player);
 }
 
 function normalizeEmptyGearSlots(player) {
@@ -1919,34 +2044,44 @@ function normalizeEmptyGearSlots(player) {
   }
 }
 
-function getGearSlotColor(item, fallback) {
-  return item === EMPTY_WEAPON.name ? EMPTY_WEAPON.color : fallback;
+function getEquipmentNameColor(item) {
+  const quality = item && item.quality ? item.quality : "common";
+  return QUALITY_COLORS[quality] || item.color || QUALITY_COLORS.common;
 }
 
-function getWeaponNameColor(weapon) {
-  const quality = weapon && weapon.quality ? weapon.quality : "common";
-  return QUALITY_COLORS[quality] || weapon.color || QUALITY_COLORS.common;
-}
-
-function getQualityName(weapon) {
-  const quality = weapon && weapon.quality ? weapon.quality : "common";
+function getQualityName(item) {
+  const quality = item && item.quality ? item.quality : "common";
   return QUALITY_NAMES[quality] || QUALITY_NAMES.common;
 }
 
-function formatEquipmentStats(weapon) {
+function getEquipmentSlotName(item) {
+  return EQUIPMENT_SLOT_NAMES[getEquipmentSlotById(item && item.id)] || "装备";
+}
+
+function isEquipmentKind(kind) {
+  return kind === "weapon" || kind === "armor" || kind === "trinket";
+}
+
+function formatEquipmentStats(item) {
   const stats = [];
-  if ((weapon.attack || 0) !== 0) {
-    stats.push("攻击 +" + weapon.attack);
+  if ((item.attack || 0) !== 0) {
+    stats.push("攻击 +" + item.attack);
   }
-  if ((weapon.defense || 0) !== 0) {
-    stats.push("防御 +" + weapon.defense);
-    stats.push("血量 +" + weapon.defense * 8);
+  if ((item.defense || 0) !== 0) {
+    stats.push("防御 +" + item.defense);
+    stats.push("血量 +" + item.defense * 8);
   }
-  if ((weapon.range || 0) !== 0) {
-    stats.push("射程 " + weapon.range);
+  if ((item.hp || 0) !== 0) {
+    stats.push("生命 +" + item.hp);
   }
-  if ((weapon.crit || 0) !== 0) {
-    stats.push("暴击 +" + Math.round(weapon.crit * 100) + "%");
+  if ((item.speed || 0) !== 0) {
+    stats.push("速度 " + (item.speed > 0 ? "+" : "") + item.speed);
+  }
+  if ((item.range || 0) !== 0) {
+    stats.push("射程 " + item.range);
+  }
+  if ((item.crit || 0) !== 0) {
+    stats.push("暴击 +" + Math.round(item.crit * 100) + "%");
   }
   return stats.length ? stats : ["无属性"];
 }
@@ -2004,27 +2139,62 @@ function getEquippedWeapon(player) {
   return weaponId ? WEAPONS[weaponId] : EMPTY_WEAPON;
 }
 
-function getInventoryWeaponIds(player) {
-  return Array.from(new Set((player.inventory || []).filter((id) => WEAPONS[id])));
+function getEquippedGear(player, slot) {
+  if (slot === "weapon") {
+    return getEquippedWeapon(player);
+  }
+  const id = player && player.equipmentIds ? player.equipmentIds[slot] : null;
+  return id && getEquipmentItem(id) ? getEquipmentItem(id) : EMPTY_WEAPON;
 }
 
-function addWeaponToInventory(player, weaponId) {
-  if (!WEAPONS[weaponId]) {
+function getEquippedItemId(player, slot) {
+  if (slot === "weapon") {
+    return getEquippedWeaponId(player);
+  }
+  return player && player.equipmentIds && getEquipmentItem(player.equipmentIds[slot]) ? player.equipmentIds[slot] : null;
+}
+
+function setEquippedItemId(player, slot, itemId) {
+  if (slot === "weapon") {
+    player.general.weapon = itemId || null;
+    return;
+  }
+  if (!player.equipmentIds) {
+    player.equipmentIds = { armor: null, trinket: null };
+  }
+  player.equipmentIds[slot] = itemId || null;
+}
+
+function isEquippedEquipment(player, itemId) {
+  const slot = getEquipmentSlotById(itemId);
+  return Boolean(slot && getEquippedItemId(player, slot) === itemId);
+}
+
+function playerOwnsEquipment(player, itemId) {
+  return (player.inventory || []).includes(itemId) || isEquippedEquipment(player, itemId);
+}
+
+function getInventoryEquipmentIds(player) {
+  return Array.from(new Set((player.inventory || []).filter((id) => getEquipmentItem(id))));
+}
+
+function addEquipmentToInventory(player, itemId) {
+  if (!getEquipmentItem(itemId)) {
     return;
   }
   if (!player.inventory) {
     player.inventory = [];
   }
-  removeWeaponFromInventory(player, weaponId);
-  player.inventory.push(weaponId);
+  removeEquipmentFromInventory(player, itemId);
+  player.inventory.push(itemId);
 }
 
-function removeWeaponFromInventory(player, weaponId) {
+function removeEquipmentFromInventory(player, itemId) {
   if (!player.inventory) {
     player.inventory = [];
     return;
   }
-  player.inventory = player.inventory.filter((id) => id !== weaponId);
+  player.inventory = player.inventory.filter((id) => id !== itemId);
 }
 
 export function getClickedButton(ui, point) {

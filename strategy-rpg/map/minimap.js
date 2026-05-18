@@ -164,7 +164,7 @@ function drawMiniMapMarkers(ctx, game, content, view) {
     if (!worldInView(resource, view, 60)) continue;
     if (!isWorldPointDiscovered(game.fog, resource.x, resource.y)) continue;
     const p = worldToMiniMap(resource.x, resource.y, content, view);
-    const color = resource.owner === "player" ? "#32ff9a" : "#ffe06a";
+    const color = resource.owner === "player" ? MINIMAP_ICON_COLORS.playerArrow : "#ffe06a";
     drawMarker(ctx, p.x, p.y, color, 3, "diamond");
     labels.push({ text: resource.name, x: p.x, y: p.y + 7, color, maxWidth: 54 });
   }
@@ -379,7 +379,7 @@ function drawPlayerMarker(ctx, x, y, angle) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle || 0);
-  ctx.shadowColor = "#32ff9a";
+  ctx.shadowColor = MINIMAP_ICON_COLORS.playerArrow;
   ctx.shadowBlur = 7;
   ctx.strokeStyle = "rgba(0,0,0,0.84)";
   ctx.lineWidth = 2;
@@ -390,7 +390,7 @@ function drawPlayerMarker(ctx, x, y, angle) {
   ctx.lineTo(-5.6, 5.6);
   ctx.closePath();
   ctx.stroke();
-  ctx.fillStyle = "#32ff9a";
+  ctx.fillStyle = MINIMAP_ICON_COLORS.playerArrow;
   ctx.beginPath();
   ctx.moveTo(0, -5.6);
   ctx.lineTo(4.9, 4.9);

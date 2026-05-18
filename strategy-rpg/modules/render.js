@@ -100,11 +100,6 @@ function renderStartScreen(ctx, game) {
     }
   }
 
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
-  ctx.fillRect(0, 0, CONFIG.canvasWidth, 260);
-
   drawPixelText(ctx, "铁冠诸侯", CONFIG.canvasWidth / 2, 118, "#ffd56a", 46, "center");
   drawPixelText(ctx, "像素策略 RPG", CONFIG.canvasWidth / 2, 178, UI_TEXT.main, 17, "center");
   drawPixelText(ctx, "探索大陆 · 招募扩军 · 攻城收税 · 统一全境", CONFIG.canvasWidth / 2, 212, UI_TEXT.muted, 14, "center");
@@ -453,7 +448,8 @@ function drawTownOnMap(ctx, game, town) {
   const sy = Math.round(town.y - game.camera.y);
   if (sx < -60 || sy < -60 || sx > CONFIG.canvasWidth + 60 || sy > CONFIG.canvasHeight + 60) return;
 
-  const faction = FACTIONS[town.owner];
+  const faction = FACTIONS[town.owner] || FACTIONS.neutral;
+  const factionColor = town.owner === "player" ? MINIMAP_ICON_COLORS.playerArrow : faction.color;
 
   // 地面阴影
   ctx.fillStyle = "rgba(0,0,0,0.3)";
@@ -461,11 +457,11 @@ function drawTownOnMap(ctx, game, town) {
   ctx.fillRect(sx - 16, sy + 20, 32, 5);
 
   if (town.kind === "castle") {
-    drawCastleSprite(ctx, sx, sy, faction.color);
+    drawCastleSprite(ctx, sx, sy, factionColor);
   } else if (town.kind === "tavern") {
-    drawTavernSprite(ctx, sx, sy, faction.color);
+    drawTavernSprite(ctx, sx, sy, factionColor);
   } else {
-    drawVillageSprite(ctx, sx, sy, faction.color);
+    drawVillageSprite(ctx, sx, sy, factionColor);
   }
 
   // 名字标签
@@ -478,7 +474,7 @@ function drawResourceOnMap(ctx, game, resource) {
   if (sx < -50 || sy < -50 || sx > CONFIG.canvasWidth + 50 || sy > CONFIG.canvasHeight + 50) return;
 
   const owned = resource.owner === "player";
-  const color = owned ? "#ffd56a" : "#b9a77a";
+  const color = owned ? MINIMAP_ICON_COLORS.playerArrow : "#b9a77a";
 
   ctx.fillStyle = "rgba(0,0,0,0.28)";
   ctx.fillRect(sx - 14, sy + 12, 28, 5);
@@ -795,7 +791,9 @@ function drawMiniMap(ctx, game) {
   for (const resource of game.map.resources || []) {
     const mx = Math.round(ox + resource.x * scaleX);
     const my = Math.round(oy + resource.y * scaleY);
-    const ownerColor = FACTIONS[resource.owner] ? FACTIONS[resource.owner].color : "#8f8060";
+    const ownerColor = resource.owner === "player"
+      ? MINIMAP_ICON_COLORS.playerArrow
+      : FACTIONS[resource.owner] ? FACTIONS[resource.owner].color : "#8f8060";
     drawMiniMapResourceIcon(ctx, mx, my, resource.kind, ownerColor, resource.owner === "player");
   }
 

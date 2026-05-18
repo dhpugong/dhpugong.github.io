@@ -1,4 +1,4 @@
-import { CONFIG, FACTIONS, MINIMAP_FACTION_COLORS } from "../modules/config.js";
+import { CONFIG, FACTIONS, MINIMAP_FACTION_COLORS, MINIMAP_ICON_COLORS } from "../modules/config.js";
 import { clamp, lerp, rectContains } from "../modules/utils.js";
 import { focusCameraOn } from "./camera.js";
 import { isWorldPointDiscovered } from "./fog.js";
@@ -453,7 +453,7 @@ function drawWorldEntities(ctx, game, state) {
     if (!isWorldPointDiscovered(game.fog, resource.x, resource.y)) continue;
     const p = worldToScreenMap(state, game.map, resource.x, resource.y);
     if (!rectContains(WORLD_MAP_RECT, p.x, p.y)) continue;
-    const color = resource.owner === "player" ? "#32ff9a" : "#ffe06a";
+    const color = resource.owner === "player" ? MINIMAP_ICON_COLORS.playerArrow : "#ffe06a";
     drawMapMarker(ctx, p.x, p.y, color, 5, "diamond");
     drawWorldMapLabel(ctx, resource.name, p.x, p.y + 12, color, 76);
   }
@@ -492,7 +492,7 @@ function drawPlayerLocatorBox(ctx, game, state) {
   ctx.strokeRect(x + 0.5, y + 0.5, size, size);
   ctx.strokeStyle = "rgba(50,255,154,0.68)";
   ctx.strokeRect(x - 2.5, y - 2.5, size + 5, size + 5);
-  ctx.fillStyle = "#32ff9a";
+  ctx.fillStyle = MINIMAP_ICON_COLORS.playerArrow;
   drawLocatorCorner(ctx, x - 3, y - 3, 8, 1, 1);
   drawLocatorCorner(ctx, x + size + 3, y - 3, 8, -1, 1);
   drawLocatorCorner(ctx, x - 3, y + size + 3, 8, 1, -1);
@@ -652,7 +652,7 @@ function drawPlayer(ctx, x, y, angle) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle || 0);
-  ctx.shadowColor = "#32ff9a";
+  ctx.shadowColor = MINIMAP_ICON_COLORS.playerArrow;
   ctx.shadowBlur = 10;
   ctx.strokeStyle = "rgba(0,0,0,0.86)";
   ctx.lineWidth = 3;
@@ -663,7 +663,7 @@ function drawPlayer(ctx, x, y, angle) {
   ctx.lineTo(-7.7, 7.7);
   ctx.closePath();
   ctx.stroke();
-  ctx.fillStyle = "#32ff9a";
+  ctx.fillStyle = MINIMAP_ICON_COLORS.playerArrow;
   ctx.beginPath();
   ctx.moveTo(0, -7.7);
   ctx.lineTo(7, 7);

@@ -1,4 +1,4 @@
-import { CONFIG, FACTIONS, TERRAIN } from "../modules/config.js";
+import { CONFIG, FACTIONS, MINIMAP_ICON_COLORS, TERRAIN } from "../modules/config.js";
 import { getTerrainById } from "../modules/map.js";
 import { drawPixelText } from "../modules/utils.js";
 import { drawFogOfWar } from "./fog.js";
@@ -427,22 +427,23 @@ function drawTownOnMap(ctx, game, town) {
   if (sx < -76 || sy < -76 || sx > game.camera.width + 76 || sy > game.camera.height + 76) return;
 
   const faction = FACTIONS[town.owner] || FACTIONS.neutral;
+  const factionColor = town.owner === "player" ? MINIMAP_ICON_COLORS.playerArrow : faction.color;
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.38)";
   ctx.fillRect(sx - 28, sy + 18, 56, 9);
   ctx.fillStyle = "rgba(214,168,79,0.13)";
   ctx.fillRect(sx - 23, sy + 15, 46, 3);
-  drawTownBase(ctx, sx, sy, town.kind, faction.color);
+  drawTownBase(ctx, sx, sy, town.kind, factionColor);
 
   if (town.kind === "castle") {
-    drawCastle(ctx, sx, sy, faction.color);
+    drawCastle(ctx, sx, sy, factionColor);
   } else if (town.kind === "tavern") {
-    drawTavern(ctx, sx, sy, faction.color);
+    drawTavern(ctx, sx, sy, factionColor);
   } else {
-    drawVillage(ctx, sx, sy, faction.color);
+    drawVillage(ctx, sx, sy, factionColor);
   }
 
-  drawMapNameplate(ctx, town.name, sx, sy + 27, faction.color, 92);
+  drawMapNameplate(ctx, town.name, sx, sy + 27, factionColor, 92);
   ctx.restore();
 }
 
@@ -590,7 +591,7 @@ function drawResourceOnMap(ctx, game, resource) {
   if (sx < -54 || sy < -54 || sx > game.camera.width + 54 || sy > game.camera.height + 54) return;
 
   const owned = resource.owner === "player";
-  const color = owned ? "#32ff9a" : "#ffd56a";
+  const color = owned ? MINIMAP_ICON_COLORS.playerArrow : "#ffd56a";
   const pulse = Math.sin(Date.now() / 520 + resource.x * 0.01) * 0.5 + 0.5;
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.fillRect(sx - 15, sy + 13, 30, 5);
@@ -869,8 +870,8 @@ function getPartyPalette(unit, color, isPlayer) {
       cape: "#25d878",
       capeDark: "#0f6c43",
       helm: "#ffd56a",
-      trim: "#32ff9a",
-      flag: "#32ff9a"
+      trim: MINIMAP_ICON_COLORS.playerArrow,
+      flag: MINIMAP_ICON_COLORS.playerArrow
     };
   }
   if (unit.faction === "wild") {
@@ -996,7 +997,7 @@ function clampNumber(value, min, max) {
 }
 
 function drawDirectionAccent(ctx, sx, sy, bob, facing, side, palette, isPlayer) {
-  ctx.fillStyle = isPlayer ? "#32ff9a" : palette.trim;
+  ctx.fillStyle = isPlayer ? MINIMAP_ICON_COLORS.playerArrow : palette.trim;
   if (facing === "up") {
     ctx.fillRect(sx - 2, sy - 29 + bob, 4, 3);
     ctx.fillRect(sx - 1, sy - 31 + bob, 2, 2);

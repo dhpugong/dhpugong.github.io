@@ -1,11 +1,13 @@
-import { WEAPONS } from "./config.js";
+import { EQUIPMENT_ITEMS, getEquipmentItem, getEquipmentSlotById, WEAPONS } from "./config.js";
+
+const GOODS_COLOR = "#f4e1aa";
 
 export const TRADE_GOODS = {
   grain: {
     id: "grain",
     name: "麦谷",
     basePrice: 18,
-    color: "#d6c06a",
+    color: GOODS_COLOR,
     description: "村镇常见粮食，军镇和关隘缺粮时价格更高。",
     supplyKinds: ["village"],
     demandKinds: ["castle", "tavern"],
@@ -16,7 +18,7 @@ export const TRADE_GOODS = {
     id: "ironOre",
     name: "铁矿石",
     basePrice: 42,
-    color: "#9ea0a3",
+    color: GOODS_COLOR,
     description: "打造兵器和城防的硬通货，矿镇便宜，前线城堡高价收购。",
     supplyKinds: [],
     demandKinds: ["castle"],
@@ -27,7 +29,7 @@ export const TRADE_GOODS = {
     id: "salt",
     name: "盐砖",
     basePrice: 36,
-    color: "#e8e0c8",
+    color: GOODS_COLOR,
     description: "便于长途运输的民生物资，各城需求稳定。",
     supplyKinds: ["tavern"],
     demandKinds: ["village", "castle"],
@@ -38,7 +40,7 @@ export const TRADE_GOODS = {
     id: "wool",
     name: "羊毛",
     basePrice: 28,
-    color: "#d8d2c6",
+    color: GOODS_COLOR,
     description: "边地牧场出产的布料原料，寒地营寨收购价不错。",
     supplyKinds: ["village"],
     demandKinds: ["castle"],
@@ -49,7 +51,7 @@ export const TRADE_GOODS = {
     id: "tea",
     name: "山茶",
     basePrice: 56,
-    color: "#78b85f",
+    color: GOODS_COLOR,
     description: "青山驿路上的精致货物，酒馆和港城更愿意出高价。",
     supplyKinds: ["village"],
     demandKinds: ["tavern"],
@@ -60,7 +62,7 @@ export const TRADE_GOODS = {
     id: "herbs",
     name: "药草",
     basePrice: 48,
-    color: "#74d17a",
+    color: GOODS_COLOR,
     description: "行军医师常备药材，战事频繁的城池需求很高。",
     supplyKinds: ["village"],
     demandKinds: ["castle"],
@@ -71,7 +73,7 @@ export const TRADE_GOODS = {
     id: "wine",
     name: "果酒",
     basePrice: 64,
-    color: "#d66a8a",
+    color: GOODS_COLOR,
     description: "酒馆低价流通的享乐品，守军驻地往往买得更贵。",
     supplyKinds: ["tavern"],
     demandKinds: ["castle"],
@@ -82,7 +84,7 @@ export const TRADE_GOODS = {
     id: "silk",
     name: "丝绸",
     basePrice: 92,
-    color: "#f3c9ff",
+    color: GOODS_COLOR,
     description: "轻而贵的奢侈品，适合高风险长途倒卖。",
     supplyKinds: ["tavern"],
     demandKinds: ["castle"],
@@ -93,7 +95,7 @@ export const TRADE_GOODS = {
     id: "amber",
     name: "琥珀",
     basePrice: 118,
-    color: "#ffb347",
+    color: GOODS_COLOR,
     description: "矿脉与古林间产出的贵重饰材，远离产地时溢价明显。",
     supplyKinds: [],
     demandKinds: ["tavern", "castle"],
@@ -104,12 +106,67 @@ export const TRADE_GOODS = {
     id: "horseTack",
     name: "马具",
     basePrice: 76,
-    color: "#c49a68",
+    color: GOODS_COLOR,
     description: "骑兵和商队都需要的货物，关隘与驿站价格起伏大。",
     supplyKinds: ["tavern"],
     demandKinds: ["castle"],
     supplyTowns: ["jadecross", "oakhall"],
     demandTowns: ["stormgate", "redspire", "northwatch"]
+  },
+  parchment: {
+    id: "parchment",
+    name: "羊皮纸",
+    basePrice: 34,
+    color: GOODS_COLOR,
+    description: "文书、地图和军令都离不开的纸材，酒馆与城堡流通频繁。",
+    supplyKinds: ["tavern"],
+    demandKinds: ["castle", "village"],
+    supplyTowns: ["graykeep", "mistport", "jadecross"],
+    demandTowns: ["northwatch", "stormgate", "sunford"]
+  },
+  spices: {
+    id: "spices",
+    name: "香料",
+    basePrice: 88,
+    color: GOODS_COLOR,
+    description: "远途商旅带来的稀罕货，港城和酒馆价格更活。",
+    supplyKinds: ["tavern"],
+    demandKinds: ["castle", "village"],
+    supplyTowns: ["blueharbor", "mistport"],
+    demandTowns: ["goldenfield", "moonwell", "redspire"]
+  },
+  timber: {
+    id: "timber",
+    name: "木材",
+    basePrice: 32,
+    color: GOODS_COLOR,
+    description: "修筑城防、车马和营寨的基础材料，前线需求稳定。",
+    supplyKinds: ["village"],
+    demandKinds: ["castle"],
+    supplyTowns: ["oakhall", "starhaven", "sunford"],
+    demandTowns: ["ironpass", "stormgate", "emberfall"]
+  },
+  linen: {
+    id: "linen",
+    name: "亚麻布",
+    basePrice: 44,
+    color: GOODS_COLOR,
+    description: "民用和军需都用得上的布匹，村镇产量大。",
+    supplyKinds: ["village"],
+    demandKinds: ["tavern", "castle"],
+    supplyTowns: ["goldenfield", "sunford"],
+    demandTowns: ["mistport", "northwatch", "blueharbor"]
+  },
+  gemstones: {
+    id: "gemstones",
+    name: "宝石",
+    basePrice: 148,
+    color: GOODS_COLOR,
+    description: "矿脉深处的奢侈品，高级城镇愿意高价收购。",
+    supplyKinds: [],
+    demandKinds: ["castle", "tavern"],
+    supplyTowns: ["crowmine", "ravenrock", "ironpass"],
+    demandTowns: ["blueharbor", "mistport", "jadecross"]
   }
 };
 
@@ -140,20 +197,20 @@ export function getTownSellListings(game, town) {
     .sort((a, b) => b.score - a.score)
     .slice(0, getGoodsSlotCount(town, day));
 
-  const weapons = Object.values(WEAPONS)
+  const equipment = Object.values(EQUIPMENT_ITEMS)
     .filter((weapon) => weapon.id !== "oldSword")
-    .map((weapon) => ({
-      kind: "weapon",
-      id: weapon.id,
-      item: weapon,
-      price: getTownItemBuyPrice(game, town, "weapon", weapon.id),
-      score: marketRandom(town.id + ":" + day + ":" + weapon.id + ":gear")
+    .map((item) => ({
+      kind: getEquipmentKind(item),
+      id: item.id,
+      item,
+      price: getTownItemBuyPrice(game, town, getEquipmentKind(item), item.id),
+      score: marketRandom(town.id + ":" + day + ":" + item.id + ":gear")
     }))
-    .filter((entry) => entry.score > getWeaponAvailabilityFloor(town, entry.item))
+    .filter((entry) => entry.score > getEquipmentAvailabilityFloor(town, entry.item))
     .sort((a, b) => b.score - a.score)
-    .slice(0, town.kind === "castle" ? 2 : 1);
+    .slice(0, getEquipmentSlotCount(town));
 
-  return goods.concat(weapons).sort((a, b) => a.price - b.price);
+  return goods.concat(equipment).sort((a, b) => a.price - b.price);
 }
 
 export function getPlayerSellListings(game, town) {
@@ -169,22 +226,23 @@ export function getPlayerSellListings(game, town) {
       price: getTownItemSellPrice(game, town, "good", id)
     }));
 
-  const weaponCounts = {};
+  const equipmentCounts = {};
   for (const id of player.inventory || []) {
-    if (WEAPONS[id]) {
-      weaponCounts[id] = (weaponCounts[id] || 0) + 1;
+    const item = getEquipmentItem(id);
+    if (item) {
+      equipmentCounts[id] = (equipmentCounts[id] || 0) + 1;
     }
   }
-  const weapons = Object.keys(weaponCounts)
+  const equipment = Object.keys(equipmentCounts)
     .map((id) => ({
-      kind: "weapon",
+      kind: getEquipmentKind(getEquipmentItem(id)),
       id,
-      item: WEAPONS[id],
-      count: weaponCounts[id],
-      price: getTownItemSellPrice(game, town, "weapon", id)
+      item: getEquipmentItem(id),
+      count: equipmentCounts[id],
+      price: getTownItemSellPrice(game, town, getEquipmentKind(getEquipmentItem(id)), id)
     }));
 
-  return goods.concat(weapons).sort((a, b) => a.item.name.localeCompare(b.item.name, "zh-Hans-CN"));
+  return goods.concat(equipment).sort((a, b) => a.item.name.localeCompare(b.item.name, "zh-Hans-CN"));
 }
 
 export function buyMarketItem(game, town, kind, id) {
@@ -195,7 +253,7 @@ export function buyMarketItem(game, town, kind, id) {
   if (game.player.gold < listing.price) {
     return { ok: false, message: "金币不足" };
   }
-  if (kind === "weapon" && playerHasWeapon(game.player, id)) {
+  if (isEquipmentKind(kind) && playerHasEquipment(game.player, id)) {
     return { ok: false, message: "背包里已有这件装备" };
   }
 
@@ -204,10 +262,7 @@ export function buyMarketItem(game, town, kind, id) {
     ensurePlayerGoods(game.player);
     game.player.goods[id] = (game.player.goods[id] || 0) + 1;
   } else {
-    if (!game.player.inventory) {
-      game.player.inventory = [];
-    }
-    game.player.inventory.push(id);
+    addEquipmentToInventory(game.player, id);
   }
   return { ok: true, message: "买入 " + listing.item.name + "，花费 " + listing.price + " 金" };
 }
@@ -228,7 +283,7 @@ export function sellMarketItem(game, town, kind, id) {
     if (game.player.goods[id] <= 0) {
       delete game.player.goods[id];
     }
-  } else if (!removeOneWeapon(game.player, id)) {
+  } else if (!removeOneEquipment(game.player, id)) {
     return { ok: false, message: "背包里没有这件装备" };
   }
 
@@ -242,6 +297,9 @@ export function getMarketItem(kind, id) {
   }
   if (kind === "weapon") {
     return WEAPONS[id] || null;
+  }
+  if (isEquipmentKind(kind)) {
+    return getEquipmentItem(id);
   }
   return null;
 }
@@ -285,14 +343,24 @@ function getGoodsSlotCount(town, day) {
   return base + Math.floor(marketRandom(town.id + ":" + day + ":slots") * 2);
 }
 
-function getWeaponAvailabilityFloor(town, weapon) {
-  let floor = town.kind === "castle" ? 0.56 : town.kind === "tavern" ? 0.72 : 0.82;
-  if (weapon.quality === "legendary") {
+function getEquipmentAvailabilityFloor(town, item) {
+  let floor = town.kind === "castle" ? 0.54 : town.kind === "tavern" ? 0.7 : 0.8;
+  const slot = getEquipmentSlotById(item.id);
+  if (slot === "armor" && town.kind === "castle") {
+    floor -= 0.08;
+  } else if (slot === "trinket" && town.kind === "tavern") {
+    floor -= 0.08;
+  }
+  if (item.quality === "legendary") {
     floor += 0.12;
-  } else if (weapon.quality === "common") {
+  } else if (item.quality === "common") {
     floor -= 0.1;
   }
   return Math.min(0.94, floor);
+}
+
+function getEquipmentSlotCount(town) {
+  return town.kind === "castle" ? 4 : town.kind === "tavern" ? 3 : 2;
 }
 
 function getRegionalModifier(town, kind, item) {
@@ -310,9 +378,15 @@ function getRegionalModifier(town, kind, item) {
     if ((item.demandTowns || []).includes(town.id)) {
       modifier += 0.3;
     }
-  } else if (kind === "weapon") {
+  } else if (isEquipmentKind(kind)) {
     modifier += town.kind === "castle" ? -0.06 : 0.12;
     modifier += item.quality === "legendary" ? 0.18 : item.quality === "epic" ? 0.1 : 0;
+    if (kind === "armor" && town.kind === "castle") {
+      modifier -= 0.08;
+    }
+    if (kind === "trinket" && town.kind === "tavern") {
+      modifier -= 0.08;
+    }
   }
   return Math.max(0.58, modifier);
 }
@@ -324,14 +398,38 @@ function getBasePrice(kind, item) {
   if (typeof item.basePrice === "number") {
     return item.basePrice;
   }
-  return Math.round(45 + item.attack * 14 + item.defense * 12 + item.range * 0.7 + item.crit * 220);
+  return Math.round(45 + (item.attack || 0) * 14 + (item.defense || 0) * 12 + (item.range || 0) * 0.7 + (item.hp || 0) * 0.7 + (item.speed || 0) * 6 + (item.crit || 0) * 220);
 }
 
-function playerHasWeapon(player, id) {
-  return (player.inventory || []).includes(id) || (player.general && player.general.weapon === id);
+function getEquipmentKind(item) {
+  const slot = item ? getEquipmentSlotById(item.id) : null;
+  return slot || "weapon";
 }
 
-function removeOneWeapon(player, id) {
+function isEquipmentKind(kind) {
+  return kind === "weapon" || kind === "armor" || kind === "trinket";
+}
+
+function playerHasEquipment(player, id) {
+  const slot = getEquipmentSlotById(id);
+  const equippedId = slot === "weapon"
+    ? player.general && player.general.weapon
+    : player.equipmentIds && player.equipmentIds[slot];
+  return (player.inventory || []).includes(id) || equippedId === id;
+}
+
+function addEquipmentToInventory(player, id) {
+  if (!getEquipmentItem(id)) {
+    return;
+  }
+  if (!player.inventory) {
+    player.inventory = [];
+  }
+  removeOneEquipment(player, id);
+  player.inventory.push(id);
+}
+
+function removeOneEquipment(player, id) {
   if (!player.inventory) {
     player.inventory = [];
     return false;

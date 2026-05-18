@@ -1,147 +1,210 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" shape-rendering="crispEdges">
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#241012"/>
-      <stop offset="0.44" stop-color="#3c2418"/>
-      <stop offset="0.72" stop-color="#5a3f22"/>
-      <stop offset="1" stop-color="#28351f"/>
+      <stop offset="0" stop-color="#684225"/>
+      <stop offset="0.34" stop-color="#a06b3a"/>
+      <stop offset="0.62" stop-color="#b98a52"/>
+      <stop offset="1" stop-color="#566d38"/>
     </linearGradient>
-    <linearGradient id="haze" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#090604" stop-opacity="0.2"/>
-      <stop offset="0.5" stop-color="#ffd56a" stop-opacity="0.14"/>
-      <stop offset="1" stop-color="#090604" stop-opacity="0.22"/>
+    <linearGradient id="sunBand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff3bd" stop-opacity="0.1"/>
+      <stop offset="0.5" stop-color="#ffe8a0" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#fff3bd" stop-opacity="0.12"/>
     </linearGradient>
-    <filter id="soften">
-      <feGaussianBlur stdDeviation="0.35"/>
-    </filter>
   </defs>
 
   <rect width="960" height="540" fill="url(#sky)"/>
-  <rect width="960" height="540" fill="#000" opacity="0.12"/>
+  <rect x="0" y="64" width="960" height="184" fill="url(#sunBand)"/>
 
-  <g opacity="0.65" filter="url(#soften)">
-    <rect x="0" y="92" width="34" height="28" fill="#2d1c17"/>
-    <rect x="48" y="84" width="46" height="44" fill="#2b1a16"/>
-    <rect x="122" y="100" width="38" height="26" fill="#321f18"/>
-    <rect x="192" y="78" width="56" height="52" fill="#2b1b16"/>
-    <rect x="284" y="96" width="40" height="34" fill="#342018"/>
-    <rect x="686" y="86" width="52" height="44" fill="#2a1a16"/>
-    <rect x="780" y="70" width="58" height="62" fill="#301d17"/>
-    <rect x="884" y="90" width="44" height="38" fill="#271915"/>
+  <!-- distant pixel mountains -->
+  <g opacity="0.66">
+    <polygon points="-36,244 86,110 216,244" fill="#596047"/>
+    <polygon points="110,246 258,78 430,246" fill="#646049"/>
+    <polygon points="320,248 466,126 610,248" fill="#58674b"/>
+    <polygon points="548,246 694,100 844,246" fill="#68704d"/>
+    <polygon points="734,248 850,76 996,248" fill="#5b674d"/>
+    <polygon points="86,110 126,160 46,160" fill="#c19c62" opacity="0.56"/>
+    <polygon points="258,78 314,148 202,148" fill="#d1aa68" opacity="0.54"/>
+    <polygon points="694,100 742,160 648,160" fill="#c7a464" opacity="0.52"/>
+    <polygon points="850,76 902,160 800,160" fill="#b99962" opacity="0.5"/>
   </g>
 
-  <g opacity="0.9">
-    <polygon points="0,272 76,190 142,270" fill="#2f302b"/>
-    <polygon points="86,274 192,150 314,274" fill="#34322e"/>
-    <polygon points="252,274 352,174 466,274" fill="#292d29"/>
-    <polygon points="520,276 628,156 752,276" fill="#30342d"/>
-    <polygon points="710,276 830,142 960,276" fill="#252b28"/>
-    <polygon points="182,151 222,196 150,198" fill="#62543f" opacity="0.42"/>
-    <polygon points="628,157 664,202 590,204" fill="#736044" opacity="0.34"/>
-    <polygon points="830,143 874,198 792,196" fill="#69583f" opacity="0.32"/>
+  <!-- far forests -->
+  <g opacity="0.78">
+    <path d="M0 238 C128 214 252 224 374 248 C492 272 600 226 724 234 C824 240 900 262 960 244 L960 540 L0 540 Z" fill="#2d4428"/>
+    <path d="M0 284 C148 244 294 260 446 300 C604 342 772 266 960 292 L960 540 L0 540 Z" fill="#3a552d"/>
+    <path d="M0 338 C142 306 298 322 466 356 C638 390 786 326 960 350 L960 540 L0 540 Z" fill="#557a37"/>
   </g>
 
-  <g opacity="0.8">
-    <path d="M0 262 C150 226 272 240 390 266 C506 292 628 240 756 250 C842 256 906 272 960 258 L960 540 L0 540 Z" fill="#263a24"/>
-    <path d="M0 318 C126 276 272 286 422 322 C580 360 748 288 960 314 L960 540 L0 540 Z" fill="#334a28"/>
-    <path d="M0 382 C160 344 294 370 438 394 C594 420 762 356 960 382 L960 540 L0 540 Z" fill="#405d2a"/>
-  </g>
-
-  <g opacity="0.34">
-    <rect x="0" y="284" width="960" height="2" fill="#f1c15d"/>
-    <rect x="0" y="332" width="960" height="2" fill="#f1c15d"/>
-  </g>
-
+  <!-- terrain bands and road, bright enough for the start overlay -->
   <g>
-    <path d="M446 420 C442 384 436 350 424 316 C410 276 406 240 428 204 C450 168 510 160 536 192 C568 232 548 276 538 316 C530 350 524 384 520 420 Z" fill="#7a5a30"/>
-    <path d="M430 420 C420 374 400 346 364 330 C330 314 300 300 278 276" stroke="#a5793a" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.76"/>
-    <path d="M518 420 C544 372 596 350 654 326 C700 306 728 284 746 252" stroke="#a5793a" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.68"/>
-    <path d="M454 422 C460 382 462 342 458 302 C454 262 468 236 484 216 C500 238 508 264 504 304 C500 342 502 382 510 422 Z" fill="#c08b42" opacity="0.45"/>
+    <rect x="0" y="312" width="960" height="2" fill="#d6a84f" opacity="0.45"/>
+    <rect x="0" y="360" width="960" height="2" fill="#f1c15d" opacity="0.35"/>
+    <path d="M0 436 C154 388 292 400 438 438 C596 480 766 392 960 424 L960 540 L0 540 Z" fill="#31471f"/>
+    <path d="M0 382 L178 450 L0 450 Z" fill="#aa8248" opacity="0.58"/>
+    <path d="M960 362 L726 468 L960 452 Z" fill="#aa8248" opacity="0.56"/>
+    <path d="M378 540 C420 486 454 450 480 410 C506 452 542 492 590 540 Z" fill="#b3874d" opacity="0.72"/>
+    <path d="M414 540 C436 492 462 456 480 426 C500 458 526 496 552 540 Z" fill="#d1a05a" opacity="0.32"/>
   </g>
 
-  <g transform="translate(386 198)">
-    <rect x="0" y="62" width="188" height="90" fill="#3d3934"/>
-    <rect x="28" y="28" width="38" height="124" fill="#49443d"/>
-    <rect x="122" y="20" width="42" height="132" fill="#49443d"/>
-    <rect x="70" y="0" width="52" height="152" fill="#514b43"/>
-    <rect x="-8" y="52" width="204" height="18" fill="#8c2f28"/>
-    <rect x="22" y="18" width="50" height="18" fill="#a43b31"/>
-    <rect x="116" y="10" width="56" height="18" fill="#a43b31"/>
-    <rect x="66" y="-10" width="60" height="20" fill="#b74636"/>
-    <g fill="#201714">
-      <rect x="84" y="104" width="22" height="48"/>
-      <rect x="38" y="76" width="12" height="16"/>
-      <rect x="138" y="72" width="12" height="18"/>
-      <rect x="88" y="34" width="16" height="20"/>
+  <!-- central fortified city -->
+  <g transform="translate(296 150)">
+    <rect x="32" y="110" width="336" height="98" fill="#413a32"/>
+    <rect x="42" y="120" width="316" height="78" fill="#5e5548"/>
+    <rect x="52" y="132" width="296" height="3" fill="#83745b"/>
+    <rect x="52" y="154" width="296" height="3" fill="#3a322b"/>
+    <rect x="52" y="178" width="296" height="3" fill="#83745b"/>
+
+    <rect x="74" y="78" width="44" height="130" fill="#5a5146"/>
+    <rect x="282" y="78" width="44" height="130" fill="#5a5146"/>
+    <rect x="154" y="48" width="92" height="160" fill="#62584a"/>
+    <rect x="170" y="18" width="60" height="190" fill="#6b604f"/>
+
+    <g fill="#332b25">
+      <rect x="86" y="98" width="18" height="24"/>
+      <rect x="296" y="98" width="18" height="24"/>
+      <rect x="184" y="72" width="32" height="42"/>
+      <rect x="184" y="166" width="32" height="42"/>
+      <rect x="58" y="172" width="20" height="36"/>
+      <rect x="322" y="172" width="20" height="36"/>
     </g>
-    <g fill="#f1c15d">
-      <rect x="42" y="80" width="6" height="8"/>
-      <rect x="140" y="76" width="6" height="8"/>
-      <rect x="93" y="38" width="6" height="8"/>
+
+    <g fill="#ffd56a">
+      <rect x="91" y="102" width="8" height="10" opacity="0.78"/>
+      <rect x="301" y="102" width="8" height="10" opacity="0.78"/>
+      <rect x="192" y="78" width="16" height="18" opacity="0.84"/>
+      <rect x="190" y="174" width="20" height="20" opacity="0.72"/>
     </g>
-    <g fill="#6b655c">
-      <rect x="8" y="82" width="22" height="4"/>
-      <rect x="58" y="104" width="24" height="4"/>
-      <rect x="118" y="96" width="22" height="4"/>
-      <rect x="154" y="118" width="20" height="4"/>
-      <rect x="78" y="64" width="24" height="4"/>
+
+    <g fill="#8c2f28">
+      <rect x="22" y="100" width="356" height="14"/>
+      <rect x="64" y="66" width="66" height="16"/>
+      <rect x="270" y="66" width="66" height="16"/>
+      <rect x="146" y="34" width="108" height="18"/>
+      <rect x="162" y="4" width="76" height="18"/>
     </g>
-    <rect x="94" y="-42" width="4" height="36" fill="#7d623c"/>
-    <path d="M98 -42 L136 -34 L98 -22 Z" fill="#d6a84f"/>
+    <g fill="#b74636">
+      <rect x="70" y="66" width="54" height="5"/>
+      <rect x="276" y="66" width="54" height="5"/>
+      <rect x="154" y="34" width="92" height="5"/>
+      <rect x="170" y="4" width="60" height="5"/>
+    </g>
+
+    <!-- battlements and stone detail -->
+    <g fill="#7f7464">
+      <rect x="36" y="104" width="18" height="10"/>
+      <rect x="72" y="102" width="18" height="12"/>
+      <rect x="108" y="102" width="18" height="12"/>
+      <rect x="146" y="100" width="18" height="14"/>
+      <rect x="184" y="98" width="18" height="16"/>
+      <rect x="222" y="100" width="18" height="14"/>
+      <rect x="260" y="102" width="18" height="12"/>
+      <rect x="296" y="102" width="18" height="12"/>
+      <rect x="332" y="104" width="18" height="10"/>
+    </g>
+    <g fill="#312a24" opacity="0.42">
+      <rect x="64" y="138" width="26" height="3"/>
+      <rect x="108" y="166" width="30" height="3"/>
+      <rect x="246" y="140" width="28" height="3"/>
+      <rect x="294" y="166" width="28" height="3"/>
+      <rect x="152" y="124" width="36" height="3"/>
+      <rect x="214" y="126" width="34" height="3"/>
+    </g>
+
+    <!-- central banner in player green -->
+    <rect x="199" y="-26" width="4" height="34" fill="#6d5130"/>
+    <path d="M203 -26 L252 -15 L203 -2 Z" fill="#32ff6a"/>
+    <rect x="211" y="-22" width="26" height="4" fill="#c8ff9a" opacity="0.5"/>
   </g>
 
-  <g opacity="0.86">
-    <g transform="translate(116 358)">
-      <rect x="0" y="30" width="172" height="86" fill="#7a5a30"/>
-      <g fill="#4f7d3f">
-        <rect x="12" y="40" width="5" height="64"/>
-        <rect x="32" y="36" width="5" height="70"/>
-        <rect x="52" y="42" width="5" height="62"/>
-        <rect x="72" y="38" width="5" height="66"/>
-        <rect x="92" y="42" width="5" height="62"/>
-        <rect x="112" y="36" width="5" height="70"/>
-        <rect x="132" y="40" width="5" height="64"/>
-        <rect x="152" y="44" width="5" height="60"/>
-      </g>
-      <rect x="-4" y="24" width="180" height="6" fill="#a5793a"/>
+  <!-- detailed side farms -->
+  <g transform="translate(34 332)" opacity="0.92">
+    <rect x="-10" y="42" width="224" height="124" fill="#6f542f"/>
+    <rect x="-4" y="36" width="230" height="8" fill="#b58645"/>
+    <g fill="#6f9642">
+      <rect x="14" y="54" width="5" height="86"/>
+      <rect x="36" y="50" width="5" height="92"/>
+      <rect x="58" y="56" width="5" height="84"/>
+      <rect x="80" y="50" width="5" height="92"/>
+      <rect x="102" y="56" width="5" height="84"/>
+      <rect x="124" y="52" width="5" height="90"/>
+      <rect x="146" y="58" width="5" height="82"/>
+      <rect x="168" y="52" width="5" height="90"/>
+      <rect x="190" y="58" width="5" height="82"/>
     </g>
-    <g transform="translate(714 338)">
-      <rect x="0" y="48" width="142" height="76" fill="#6d512b"/>
-      <g fill="#3f6f36">
-        <rect x="10" y="58" width="4" height="54"/>
-        <rect x="26" y="54" width="4" height="58"/>
-        <rect x="42" y="60" width="4" height="52"/>
-        <rect x="58" y="56" width="4" height="56"/>
-        <rect x="74" y="60" width="4" height="52"/>
-        <rect x="90" y="54" width="4" height="58"/>
-        <rect x="106" y="58" width="4" height="54"/>
-        <rect x="122" y="62" width="4" height="50"/>
-      </g>
+    <g fill="#d1a05a" opacity="0.55">
+      <rect x="24" y="70" width="160" height="2"/>
+      <rect x="12" y="102" width="178" height="2"/>
+      <rect x="30" y="132" width="146" height="2"/>
     </g>
   </g>
 
-  <g transform="translate(704 286)">
-    <rect x="0" y="44" width="96" height="48" fill="#302b28"/>
-    <path d="M8 44 L48 6 L88 44 Z" fill="#5d554c"/>
-    <rect x="34" y="46" width="28" height="46" fill="#15110f"/>
-    <rect x="16" y="52" width="8" height="8" fill="#ffd56a" opacity="0.6"/>
-    <rect x="72" y="54" width="8" height="6" fill="#ffd56a" opacity="0.55"/>
-    <path d="M8 94 C32 82 66 82 96 94" stroke="#8a7050" stroke-width="4" fill="none"/>
+  <g transform="translate(738 324)" opacity="0.88">
+    <rect x="0" y="58" width="178" height="108" fill="#5b4828"/>
+    <rect x="-10" y="52" width="198" height="8" fill="#9d7640"/>
+    <g fill="#4e7d3b">
+      <rect x="16" y="70" width="5" height="72"/>
+      <rect x="36" y="66" width="5" height="78"/>
+      <rect x="56" y="72" width="5" height="70"/>
+      <rect x="76" y="66" width="5" height="78"/>
+      <rect x="96" y="72" width="5" height="70"/>
+      <rect x="116" y="68" width="5" height="76"/>
+      <rect x="136" y="74" width="5" height="68"/>
+      <rect x="156" y="68" width="5" height="76"/>
+    </g>
+    <g fill="#c4934f" opacity="0.42">
+      <rect x="18" y="92" width="146" height="2"/>
+      <rect x="12" y="124" width="152" height="2"/>
+    </g>
   </g>
 
-  <g opacity="0.58" fill="#162014">
-    <rect x="40" y="326" width="14" height="46"/>
-    <rect x="36" y="306" width="22" height="22"/>
-    <rect x="310" y="306" width="16" height="54"/>
-    <rect x="304" y="280" width="28" height="28"/>
-    <rect x="606" y="312" width="14" height="44"/>
-    <rect x="600" y="294" width="26" height="22"/>
-    <rect x="878" y="318" width="14" height="46"/>
-    <rect x="872" y="296" width="26" height="24"/>
+  <!-- village and mill silhouettes, brighter than old asset but still behind UI -->
+  <g transform="translate(680 276)" opacity="0.9">
+    <rect x="0" y="56" width="118" height="60" fill="#3a342d"/>
+    <path d="M8 56 L58 12 L108 56 Z" fill="#6b6254"/>
+    <path d="M20 56 L58 24 L96 56 Z" fill="#867656"/>
+    <rect x="42" y="64" width="34" height="52" fill="#1c1713"/>
+    <rect x="18" y="70" width="10" height="10" fill="#ffd56a" opacity="0.58"/>
+    <rect x="88" y="72" width="10" height="8" fill="#ffd56a" opacity="0.52"/>
+    <rect x="112" y="30" width="7" height="86" fill="#4b3927"/>
+    <rect x="88" y="54" width="55" height="5" fill="#b3874d"/>
+    <rect x="113" y="4" width="5" height="55" fill="#b3874d"/>
+    <rect x="96" y="17" width="40" height="5" fill="#b3874d"/>
+    <rect x="100" y="72" width="34" height="44" fill="#57412b"/>
   </g>
 
-  <rect width="960" height="540" fill="url(#haze)"/>
-  <rect width="960" height="540" fill="#000" opacity="0.22"/>
-  <rect x="0" y="0" width="960" height="88" fill="#000" opacity="0.18"/>
-  <rect x="0" y="418" width="960" height="122" fill="#000" opacity="0.22"/>
+  <!-- foreground trees -->
+  <g opacity="0.75">
+    <g fill="#1f341d">
+      <rect x="44" y="322" width="16" height="56"/>
+      <rect x="38" y="296" width="28" height="30"/>
+      <rect x="304" y="304" width="18" height="62"/>
+      <rect x="296" y="274" width="34" height="34"/>
+      <rect x="608" y="306" width="16" height="58"/>
+      <rect x="600" y="282" width="30" height="30"/>
+      <rect x="884" y="316" width="16" height="60"/>
+      <rect x="876" y="288" width="32" height="34"/>
+    </g>
+    <g fill="#466f35">
+      <rect x="42" y="304" width="18" height="6"/>
+      <rect x="300" y="286" width="24" height="6"/>
+      <rect x="604" y="292" width="20" height="5"/>
+      <rect x="880" y="302" width="22" height="6"/>
+    </g>
+  </g>
+
+  <!-- subtle pixel dust and warm edge light -->
+  <g fill="#ffe6a6" opacity="0.22">
+    <rect x="118" y="236" width="3" height="3"/>
+    <rect x="220" y="190" width="2" height="2"/>
+    <rect x="336" y="224" width="3" height="2"/>
+    <rect x="566" y="198" width="2" height="2"/>
+    <rect x="754" y="226" width="3" height="3"/>
+    <rect x="836" y="180" width="2" height="2"/>
+  </g>
+
+  <!-- final toning: lighter than previous asset, but still lets title/buttons read -->
+  <rect x="0" y="0" width="960" height="86" fill="#120905" opacity="0.02"/>
+  <rect x="0" y="420" width="960" height="120" fill="#101b0c" opacity="0.16"/>
+  <rect width="960" height="540" fill="#000" opacity="0.025"/>
 </svg>

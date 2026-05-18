@@ -1,4 +1,4 @@
-import { CONFIG, FACTIONS, SKILLS, TROOP_TYPES, WEAPONS } from "./config.js";
+import { ARMORS, CONFIG, FACTIONS, SKILLS, TRINKETS, TROOP_TYPES, WEAPONS } from "./config.js";
 import { addPlayerExp, getPlayerBattleBonus } from "./player.js";
 import { getGeneralBattleBonus } from "./generals.js";
 import { addWarReport } from "./reports.js";
@@ -61,6 +61,7 @@ function createBattleState({ player, enemy, enemyArmy, enemyName, enemyFaction, 
     settled: false,
     summary: null,
     enemy,
+    player,
     enemyName,
     enemyFaction,
     isSiege,
@@ -92,10 +93,17 @@ function deployGeneral(battle, general, side, bonus) {
   }
 
   const weapon = WEAPONS[general.weapon] || EMPTY_WEAPON;
+  const armor = side === "left" ? getEquippedGearBonus(battle, "armor") : EMPTY_WEAPON;
+  const trinket = side === "left" ? getEquippedGearBonus(battle, "trinket") : EMPTY_WEAPON;
+  const gearAttack = weapon.attack + (armor.attack || 0) + (trinket.attack || 0);
+  const gearDefense = weapon.defense + (armor.defense || 0) + (trinket.defense || 0);
+  const gearHp = (armor.hp || 0) + (trinket.hp || 0);
+  const gearSpeed = (armor.speed || 0) + (trinket.speed || 0);
+  const gearCrit = weapon.crit + (armor.crit || 0) + (trinket.crit || 0);
   const generalBonus = getGeneralBattleBonus(general);
   const dir = side === "left" ? 1 : -1;
   const level = general.level || 1;
-  const hp = Math.round((130 + level * 22 + weapon.defense * 8 + generalBonus.hp) * (bonus ? 1 + bonus.morale / 220 : 1) * BATTLE_HP_MULTIPLIER);
+  const hp = Math.round((130 + level * 22 + gearDefense * 8 + gearHp + generalBonus.hp) * (bonus ? 1 + bonus.morale / 220 : 1) * BATTLE_HP_MULTIPLIER);
   battle.units.push({
     id: side + "-general-" + Math.random().toString(16).slice(2),
     side,
@@ -106,11 +114,11 @@ function deployGeneral(battle, general, side, bonus) {
     vx: 0,
     hp,
     maxHp: hp,
-    attack: Math.round((18 + level * 4 + weapon.attack + generalBonus.attack) * (bonus ? bonus.attack : 1)),
-    defense: Math.round(6 + level + weapon.defense + generalBonus.defense),
+    attack: Math.round((18 + level * 4 + gearAttack + generalBonus.attack) * (bonus ? bonus.attack : 1)),
+    defense: Math.round(6 + level + gearDefense + generalBonus.defense),
     range: weapon.range,
-    speed: (38 + level * 1.5 + generalBonus.speed) * (bonus ? bonus.speed : 1) * BATTLE_MOVE_SPEED_MULTIPLIER,
-    crit: 0.08 + weapon.crit + generalBonus.crit,
+    speed: (38 + level * 1.5 + gearSpeed + generalBonus.speed) * (bonus ? bonus.speed : 1) * BATTLE_MOVE_SPEED_MULTIPLIER,
+    crit: 0.08 + gearCrit + generalBonus.crit,
     color: side === "left" ? "#ffd56a" : FACTIONS[general.faction] ? FACTIONS[general.faction].color : "#f8e9bd",
     name: general.name || "将领",
     icon: "将",
@@ -128,6 +136,18 @@ function deployGeneral(battle, general, side, bonus) {
     hitFlash: 0,
     skillPulse: 0
   });
+}
+
+function getEquippedGearBonus(battle, slot) {
+  const player = battle && battle.player;
+  const id = player && player.equipmentIds ? player.equipmentIds[slot] : null;
+  if (slot === "armor") {
+    return id && ARMORS[id] ? ARMORS[id] : EMPTY_WEAPON;
+  }
+  if (slot === "trinket") {
+    return id && TRINKETS[id] ? TRINKETS[id] : EMPTY_WEAPON;
+  }
+  return EMPTY_WEAPON;
 }
 
 // 列阵规则：将领独立前排，士兵按兵种分列，每列最多 10 人。

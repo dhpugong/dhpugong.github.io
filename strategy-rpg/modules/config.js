@@ -58,8 +58,10 @@ export const FACTIONS = {
   wild: { id: "wild", name: "荒野群落", color: "#7b8f44" }
 };
 
+export const PLAYER_ARROW_COLOR = "#32ff6a";
+
 export const MINIMAP_FACTION_COLORS = {
-  player: "#ffd13a",
+  player: PLAYER_ARROW_COLOR,
   neutral: "#ffeba2",
   red: "#ff1100",
   blue: "#0084ffbe",
@@ -74,7 +76,7 @@ export const MINIMAP_ICON_SETTINGS = {
 };
 
 export const MINIMAP_ICON_COLORS = {
-  playerArrow: "#32ff6a",
+  playerArrow: PLAYER_ARROW_COLOR,
   mineBody: "#7d756a",
   mineTop: "#d1c7b5",
   mineDoor: "#2b2724",
@@ -82,7 +84,7 @@ export const MINIMAP_ICON_COLORS = {
   farmSoil: "#8f6735",
   farmCrop: "#78e05f",
   farmBarn: "#ffe06a",
-  ownedAccent: "#32ff6a"
+  ownedAccent: PLAYER_ARROW_COLOR
 };
 
 export const TROOP_TYPES = TROOP_TYPES_DATA;
@@ -249,6 +251,185 @@ export const WEAPONS = {
   }
 };
 
+export const ARMORS = {
+  leatherJerkin: {
+    id: "leatherJerkin",
+    name: "硬皮甲",
+    quality: "common",
+    slot: "armor",
+    attack: 0,
+    defense: 4,
+    speed: 1,
+    hp: 18,
+    crit: 0,
+    basePrice: 86,
+    color: "#c9b18a"
+  },
+  chainmail: {
+    id: "chainmail",
+    name: "锁子甲",
+    quality: "uncommon",
+    slot: "armor",
+    attack: 0,
+    defense: 7,
+    speed: -1,
+    hp: 34,
+    crit: 0,
+    basePrice: 142,
+    color: "#b8c0c8"
+  },
+  scaleArmor: {
+    id: "scaleArmor",
+    name: "鳞纹甲",
+    quality: "rare",
+    slot: "armor",
+    attack: 1,
+    defense: 9,
+    speed: 0,
+    hp: 46,
+    crit: 0.02,
+    basePrice: 238,
+    color: "#9ed2f0"
+  },
+  knightPlate: {
+    id: "knightPlate",
+    name: "骑士板甲",
+    quality: "epic",
+    slot: "armor",
+    attack: 0,
+    defense: 13,
+    speed: -2,
+    hp: 68,
+    crit: 0,
+    basePrice: 386,
+    color: "#d8d2c6"
+  },
+  shadowCloak: {
+    id: "shadowCloak",
+    name: "影纹斗篷",
+    quality: "epic",
+    slot: "armor",
+    attack: 2,
+    defense: 6,
+    speed: 5,
+    hp: 24,
+    crit: 0.05,
+    basePrice: 412,
+    color: "#c79bff"
+  },
+  sunforgedArmor: {
+    id: "sunforgedArmor",
+    name: "日铸重甲",
+    quality: "legendary",
+    slot: "armor",
+    attack: 3,
+    defense: 16,
+    speed: -1,
+    hp: 92,
+    crit: 0.03,
+    basePrice: 620,
+    color: "#ffd56a"
+  }
+};
+
+export const TRINKETS = {
+  ironCharm: {
+    id: "ironCharm",
+    name: "铁誓护符",
+    quality: "common",
+    slot: "trinket",
+    attack: 1,
+    defense: 1,
+    speed: 0,
+    hp: 10,
+    crit: 0.01,
+    basePrice: 74,
+    color: "#d8d2c6"
+  },
+  hawkFeather: {
+    id: "hawkFeather",
+    name: "鹰羽坠饰",
+    quality: "uncommon",
+    slot: "trinket",
+    attack: 2,
+    defense: 0,
+    speed: 4,
+    hp: 0,
+    crit: 0.04,
+    basePrice: 136,
+    color: "#9ed2f0"
+  },
+  scholarSeal: {
+    id: "scholarSeal",
+    name: "学士印戒",
+    quality: "rare",
+    slot: "trinket",
+    attack: 3,
+    defense: 1,
+    speed: 1,
+    hp: 18,
+    crit: 0.03,
+    basePrice: 226,
+    color: "#c79bff"
+  },
+  warHorn: {
+    id: "warHorn",
+    name: "军号角",
+    quality: "rare",
+    slot: "trinket",
+    attack: 4,
+    defense: 2,
+    speed: 0,
+    hp: 28,
+    crit: 0.02,
+    basePrice: 254,
+    color: "#d6a84f"
+  },
+  moonAmulet: {
+    id: "moonAmulet",
+    name: "月井护符",
+    quality: "epic",
+    slot: "trinket",
+    attack: 5,
+    defense: 3,
+    speed: 3,
+    hp: 36,
+    crit: 0.06,
+    basePrice: 418,
+    color: "#b7c9ff"
+  },
+  crownRing: {
+    id: "crownRing",
+    name: "旧冠戒指",
+    quality: "legendary",
+    slot: "trinket",
+    attack: 7,
+    defense: 4,
+    speed: 4,
+    hp: 50,
+    crit: 0.08,
+    basePrice: 680,
+    color: "#ffd56a"
+  }
+};
+
+export const EQUIPMENT_ITEMS = {
+  ...WEAPONS,
+  ...ARMORS,
+  ...TRINKETS
+};
+
+export function getEquipmentItem(id) {
+  return EQUIPMENT_ITEMS[id] || null;
+}
+
+export function getEquipmentSlotById(id) {
+  if (WEAPONS[id]) return "weapon";
+  if (ARMORS[id]) return "armor";
+  if (TRINKETS[id]) return "trinket";
+  return null;
+}
+
 export const PLAYER_TEMPLATE = {
   name: "流亡领主",
   level: 1,
@@ -269,6 +450,10 @@ export const PLAYER_TEMPLATE = {
     weapon: "旧王短剑",
     armor: "未装备",
     trinket: "未装备"
+  },
+  equipmentIds: {
+    armor: null,
+    trinket: null
   },
   general: {
     name: "沈铁冠",
