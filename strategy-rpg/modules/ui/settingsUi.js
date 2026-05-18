@@ -5,26 +5,32 @@ export function drawSettingsUi(ctx, game) {
   clearButtons(game.ui);
 
   const panelX = 300;
-  const panelY = 72;
+  const panelY = 54;
   const panelW = 360;
-  drawPanel(ctx, panelX, panelY, panelW, 360, "设置", "settings");
+  drawPanel(ctx, panelX, panelY, panelW, 430, "设置", "settings");
   addPanelCloseButton(game.ui, panelX, panelY, panelW, "closeSettings");
-  drawPixelText(ctx, "最大帧率", 336, 110, "#ffd56a", 15);
-  drawPixelText(ctx, "当前 " + game.settings.maxFps + " FPS", 520, 112, UI_TEXT.main, 12);
+  drawPixelText(ctx, "最大帧率", 336, 92, "#ffd56a", 15);
+  drawPixelText(ctx, "当前 " + game.settings.maxFps + " FPS", 520, 94, UI_TEXT.main, 12);
 
   const options = [15, 24, 30, 45, 60];
   options.forEach(function (fps, index) {
     const selected = game.settings.maxFps === fps;
-    addButton(game.ui, 336 + index * 58, 144, 48, 30, selected ? fps + "✓" : String(fps), "setFps:" + fps);
+    addButton(game.ui, 336 + index * 58, 126, 48, 30, selected ? fps + "✓" : String(fps), "setFps:" + fps);
   });
 
-  drawPixelText(ctx, "存档", 336, 206, "#ffd56a", 15);
-  addButton(game.ui, 336, 240, 132, 34, "保存存档", "save");
-  addButton(game.ui, 492, 240, 132, 34, "读取存档", "load");
-  addButton(game.ui, 336, 284, 132, 34, document.fullscreenElement ? "退出全屏" : "全屏", "toggleFullscreen");
-  drawPixelText(ctx, "兑换码", 336, 292, "#ffd56a", 15);
-  addButton(game.ui, 492, 284, 132, 34, "输入兑换码", "openPrivilege");
-  addButton(game.ui, 414, 342, 132, 36, "返回主界面", "backToStart");
+  drawPixelText(ctx, "新手教程", 336, 188, "#ffd56a", 15);
+  const tutorial = game.tutorial || {};
+  const tutorialLabel = tutorial.enabled && !tutorial.completed ? "跳过教程" : "重开教程";
+  const tutorialAction = tutorial.enabled && !tutorial.completed ? "tutorialSkip" : "tutorialReset";
+  addButton(game.ui, 336, 220, 132, 34, tutorialLabel, tutorialAction);
+  drawPixelText(ctx, tutorial.completed ? "已完成或已跳过" : tutorial.enabled ? "教程进行中" : "未开启", 492, 230, UI_TEXT.muted, 11);
+
+  drawPixelText(ctx, "存档", 336, 282, "#ffd56a", 15);
+  addButton(game.ui, 336, 314, 132, 34, "保存存档", "save");
+  addButton(game.ui, 492, 314, 132, 34, "读取存档", "load");
+  addButton(game.ui, 336, 358, 132, 34, document.fullscreenElement ? "退出全屏" : "全屏", "toggleFullscreen");
+  addButton(game.ui, 492, 358, 132, 34, "输入兑换码", "openPrivilege");
+  addButton(game.ui, 414, 420, 132, 36, "返回主界面", "backToStart");
 
   const baseButtonCount = game.ui.buttons.length;
   for (let i = 0; i < baseButtonCount; i += 1) {

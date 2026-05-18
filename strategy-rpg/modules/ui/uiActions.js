@@ -1,5 +1,6 @@
 import { buyMarketItem, getPlayerSellListings, getTownSellListings, sellMarketItem } from "../market.js";
 import { setNotice } from "../notice.js";
+import { resetTutorial, skipTutorial, updateTutorial } from "../tutorial.js";
 import { upgradeSingleTroop, upgradeTroopBatch } from "../troop.js";
 import { developTown, leaveTown, recruitFromTown, resetTownUi, restAtTown } from "../town.js";
 import { INVENTORY_PAGE_SIZE, MARKET_PAGE_SIZE, clearArmyUiState, clearEnemyArmyPreview, stepPagedListPage } from "./uiCore.js";
@@ -14,11 +15,13 @@ export function handleUiAction(game, action) {
     clearAttributeSession(game);
     game.state = "menu";
     game.message = "属性界面：查看装备、分配技能点、管理存档";
+    updateTutorial(game, { type: "menu" });
     return true;
   }
   if (action === "army") {
     game.state = "army";
     game.message = "军队管理：花费金币升级部队";
+    updateTutorial(game, { type: "openArmy" });
     return true;
   }
   if (action === "closeMenu") {
@@ -88,7 +91,8 @@ export function handleUiAction(game, action) {
     return true;
   }
   if (action.indexOf("townView:") === 0) {
-    game.ui.townView = action.split(":")[1] || "home";
+    var townView = action.split(":")[1] || "home";
+    game.ui.townView = townView;
     game.ui.selectedMarketItem = null;
     game.ui.marketBuyPage = 0;
     game.ui.marketSellPage = 0;
@@ -104,7 +108,10 @@ export function handleUiAction(game, action) {
   }
   if (action.indexOf("recruit:") === 0) {
     var parts = action.split(":");
-    recruitFromTown(game, parts[1], Number(parts[2]));
+    var recruitResult = recruitFromTown(game, parts[1], Number(parts[2]));
+    if (recruitResult && recruitResult.ok) {
+      updateTutorial(game, { type: "recruit" });
+    }
     return true;
   }
   if (action.indexOf("upgradeTroop:") === 0) {
@@ -113,6 +120,7 @@ export function handleUiAction(game, action) {
     setNotice(game, result.ok ? "升级完成" : "无法升级", [result.message], 1.8, "gold");
     if (result.ok && result.upgraded) {
       setSelectedArmySoldier(game, result.upgraded.type, result.upgraded.level);
+      updateTutorial(game, { type: "upgradeTroop" });
     }
     return true;
   }
@@ -122,6 +130,7 @@ export function handleUiAction(game, action) {
     setNotice(game, singleResult.ok ? "升级完成" : "无法升级", [singleResult.message], 1.8, "gold");
     if (singleResult.ok && singleResult.upgraded) {
       setSelectedArmySoldier(game, singleResult.upgraded.type, singleResult.upgraded.level);
+      updateTutorial(game, { type: "upgradeTroop" });
     }
     return true;
   }
@@ -148,6 +157,7 @@ export function handleUiAction(game, action) {
     if (batchResult.ok) {
       game.ui.selectedArmySoldierKeys = [];
       game.ui.selectedArmySoldierKey = null;
+      updateTutorial(game, { type: "upgradeTroop" });
     }
     return true;
   }
@@ -269,6 +279,7 @@ export function handleUiAction(game, action) {
     if (selectedEquipId) {
       equipPlayerItem(game.player, selectedEquipId);
       setSelectedEquipment(game, null);
+      updateTutorial(game, { type: "equipment" });
     }
     return true;
   }
@@ -276,8 +287,24 @@ export function handleUiAction(game, action) {
     var selectedUnequipId = getSelectedEquipmentId(game);
     if (selectedUnequipId) {
       unequipPlayerItem(game.player, selectedUnequipId);
+      updateTutorial(game, { type: "equipment" });
     }
     setSelectedEquipment(game, null);
+    return true;
+  }
+  if (action === "tutorialSkip") {
+    skipTutorial(game);
+    setNotice(game, "教程已跳过", ["可在设置中重新开启"], 1.6, "gold");
+    return true;
+  }
+  if (action === "tutorialComplete") {
+    skipTutorial(game);
+    setNotice(game, "教程完成", ["继续扩张你的领地"], 1.6, "gold");
+    return true;
+  }
+  if (action === "tutorialReset") {
+    resetTutorial(game);
+    setNotice(game, "教程已重开", ["跟随目标逐步熟悉玩法"], 1.6, "gold");
     return true;
   }
   if (action.indexOf("attrAdd:") === 0) {

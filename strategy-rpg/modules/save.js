@@ -6,6 +6,7 @@ import { applyRandomGeneralAttributes } from "./generals.js";
 import { ensurePlayerGoods } from "./market.js";
 import { createPlayer } from "./player.js";
 import { normalizeReports } from "./reports.js";
+import { serializeTutorialState } from "./tutorial.js";
 import { deepClone } from "./utils.js";
 import { serializeFogOfWar } from "../map/fog.js";
 
@@ -35,6 +36,7 @@ function createSaveData(game) {
     npcs: deepClone((game.npcs || []).filter((npc) => npc.alive)),
     log: deepClone(game.log.slice(0, 20)),
     reports: deepClone((game.reports || []).slice(0, 8)),
+    tutorial: serializeTutorialState(game.tutorial),
     fog: serializeFogOfWar(game.fog),
     elapsedDayTimer: game.elapsedDayTimer,
     wildSpawnTimer: game.wildSpawnTimer

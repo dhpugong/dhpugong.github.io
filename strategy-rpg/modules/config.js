@@ -476,12 +476,12 @@ export const TOWN_TEMPLATES = [
     x: 650,
     y: 520,
     owner: "neutral",
-    defense: 86,
+    defense: 42,
     taxBase: TOWN_INCOME.graykeep,
     recruits: ["infantry", "pikeman", "archer"],
     garrison: [
-      { type: "infantry", count: 20, level: 1, xp: 0, morale: 72 },
-      { type: "archer", count: 10, level: 1, xp: 0, morale: 68 }
+      { type: "infantry", count: 8, level: 1, xp: 0, morale: 58 },
+      { type: "archer", count: 3, level: 1, xp: 0, morale: 54 }
     ],
     general: { name: "陆灰岩", faction: "neutral", level: 1, weapon: "ironSaber" }
   },

@@ -43,7 +43,7 @@ export function drawHud(ctx, game) {
   drawWarReports(ctx, game);
 
   // 键盘提示
-  drawPixelText(ctx, "WASD移动 | E进城 | R攻城 | ESC菜单 | F5保存 | F9读档", 10, 522, "rgba(248,233,189,0.62)", 12);
+  drawPixelText(ctx, "WASD移动 | E进城 | R攻城 | ESC菜单 | F9读档 | 设置保存", 10, 522, "rgba(248,233,189,0.62)", 12);
 }
 
 export function drawAvatar(ctx, button, player, input) {

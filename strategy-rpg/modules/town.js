@@ -164,10 +164,11 @@ export function recruitFromTown(game, typeId, count = 3) {
   const town = game.activeTown;
   if (!town || !town.recruits.includes(typeId)) {
     game.message = "此地无法招募该兵种";
-    return;
+    return { ok: false, message: game.message };
   }
   const result = recruitUnit(game.player, typeId, count);
   game.message = result.message;
+  return result;
 }
 
 export function occupyTown(game, town) {

@@ -572,7 +572,7 @@ function settleBattle(game, battle) {
     const levelMsgs = addPlayerExp(game.player, rewards.exp);
     summary.lines.push("获得金币 +" + rewards.gold);
     summary.lines.push("获得经验 +" + rewards.exp);
-    summary.lines.push(formatLossLine(playerLosses, playerDeaths, enemyLosses, enemyDeaths));
+    summary.lines.push(formatPlayerLossLine(playerLosses, playerDeaths));
     for (const msg of levelMsgs) {
       summary.lines.push(msg);
     }
@@ -605,7 +605,7 @@ function settleBattle(game, battle) {
       game.player.gold = Math.max(0, Math.floor(game.player.gold * 0.55));
       summary.lines.push("损失金币 -" + lostGold);
     }
-    summary.lines.push(formatLossLine(playerLosses, playerDeaths, enemyLosses, enemyDeaths));
+    summary.lines.push(formatPlayerLossLine(playerLosses, playerDeaths));
     summary.lines.push(fled ? "部队脱离战场" : "部队撤退至安全地带");
   }
 
@@ -641,8 +641,11 @@ function rollFatalities(casualtyMap) {
   return fatalities;
 }
 
-function formatLossLine(playerLosses, playerDeaths, enemyLosses, enemyDeaths) {
-  return "我军倒下 " + playerLosses + "，实际阵亡 " + playerDeaths + "；敌军倒下 " + enemyLosses + "，实际阵亡 " + enemyDeaths;
+function formatPlayerLossLine(playerLosses, playerDeaths) {
+  if (playerLosses <= 0 && playerDeaths <= 0) {
+    return "我军无明显伤亡";
+  }
+  return "我军倒下 " + playerLosses + "，实际阵亡 " + playerDeaths;
 }
 
 function rollWeaponDrop(game, battle) {

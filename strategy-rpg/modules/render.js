@@ -1,6 +1,7 @@
 import { CONFIG, TROOP_TYPES } from "./config.js";
 import { getBattleTitle } from "./battle.js";
 import { getSaveSlots, hasResumeGame, hasSave } from "./save.js";
+import { drawTutorialUi } from "./tutorial.js";
 import { addButton, drawArmyPreviewOverlay, drawArmyUi, drawButton, drawHud, drawMenuUi, drawSettingsUi, drawTownUi } from "./ui.js";
 import { clamp, darkenColor, drawBar, drawPanel, drawPixelText, lightenColor } from "./utils.js";
 import { drawMiniMap as drawMiniMapOverlay } from "../map/minimap.js";
@@ -47,6 +48,7 @@ export function renderGame(renderer, game) {
   if (game.state === "battle") {
     renderBattle(ctx, game);
     drawSaveSlotDialog(ctx, game);
+    drawTutorialUi(ctx, game);
     drawCenterNotice(ctx, game);
     return;
   }
@@ -74,6 +76,7 @@ export function renderGame(renderer, game) {
   }
   drawWorldMap(ctx, game);
   drawSaveSlotDialog(ctx, game);
+  drawTutorialUi(ctx, game);
   drawCenterNotice(ctx, game);
 }
 

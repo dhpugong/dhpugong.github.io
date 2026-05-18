@@ -10,6 +10,7 @@ import { addWarReport } from "./modules/reports.js";
 import { createRenderer, renderGame } from "./modules/render.js";
 import { applySaveToGame, autoSaveIfNeeded, createFreshGameData, deleteSaveSlot, loadGameData, loadResumeGameData, saveGame, saveResumeGame } from "./modules/save.js";
 import { enterTown, resetTownUi } from "./modules/town.js";
+import { acknowledgeTutorialPause, createTutorialState, isTutorialPaused, normalizeTutorialState, updateTutorial } from "./modules/tutorial.js";
 import { distanceXY, ensureFacingState, moveToward, updateFacing } from "./modules/utils.js";
 import { clearArmyUiState, clearEnemyArmyPreview, createUi, getClickedButton, handleUiAction } from "./modules/ui.js";
 import { createMapCamera as createCamera, focusCameraOn, releaseCamera, screenToWorld, updateMapCamera as updateCamera } from "./map/camera.js";
@@ -45,6 +46,7 @@ var game = {
     worldMap: createWorldMapState()
   },
   notice: null,
+  tutorial: createTutorialState({ enabled: false }),
   npcs: [],
   activeTown: null,
   nearTown: null,
@@ -56,7 +58,7 @@ var game = {
   travelDestination: null,
   privilege: { open: false, input: "", busy: false },
   message: "点击地面移动，WASD 行军。靠近城镇按 E 进入，按 R 攻城。",
-  log: ["探索大陆、招募扩军、攻城收税、统一全境", "提示：ESC 打开军务菜单 | F5 保存 | F9 读档"],
+  log: ["探索大陆、招募扩军、攻城收税、统一全境", "提示：ESC 打开军务菜单 | F9 读档 | 设置中可保存"],
   reports: [],
   settings: settings,
   previousState: null,
@@ -117,11 +119,22 @@ function getTargetFps() {
 function updateGame(dt) {
   advanceNotice(game, dt);
   handlePrivilegeInput();
-  handleGlobalShortcuts();
-  saveBeforeStartIfRequested();
+  var tutorialPaused = isTutorialPaused(game);
+  if (!tutorialPaused) {
+    handleGlobalShortcuts();
+    saveBeforeStartIfRequested();
+  }
 
   var click = consumeClick(input);
   var doubleClick = consumeDoubleClick(input);
+  if (tutorialPaused) {
+    input.mouse.dragDx = 0;
+    input.mouse.dragDy = 0;
+    input.mouse.wheel = 0;
+    if (click && handleUiClick(click)) return;
+    updateTutorial(game, { type: "tick" });
+    return;
+  }
   if (doubleClick && handleWorldMapDoubleClick(game, doubleClick)) return;
   if (game.mapUi && game.mapUi.worldMap.open) {
     updateWorldMap(game, dt);
@@ -151,6 +164,7 @@ function updateGame(dt) {
     updateCamera(game.camera, game.player, game.map);
   }
 
+  updateTutorial(game, { type: "tick" });
   autoSaveIfNeeded(game, dt);
 }
 
@@ -209,9 +223,6 @@ function handleGlobalShortcuts() {
       game.message = "打开军务菜单";
     }
   }
-  if (consumeKey(input, "f5")) {
-    openSaveSlotDialog("save");
-  }
   if (consumeKey(input, "f9")) {
     openSaveSlotDialog("load");
   }
@@ -221,6 +232,14 @@ function handleUiClick(click) {
   var button = getClickedButton(game.ui, click);
   if (!button) {
     return Boolean(game.ui && game.ui.saveSlotDialogOpen);
+  }
+
+  if (button.action === "tutorialBlock") {
+    return true;
+  }
+  if (button.action === "tutorialNext") {
+    acknowledgeTutorialPause(game);
+    return true;
   }
 
   if (game.ui && game.ui.saveSlotDialogOpen && !isSaveSlotDialogAction(button.action)) {
@@ -260,6 +279,7 @@ function handleUiClick(click) {
   }
   if (button.action === "finishBattle") {
     finishBattle(game);
+    updateTutorial(game, { type: "battleEnd" });
     clearUnitPath(game.player);
     return true;
   }
@@ -289,6 +309,7 @@ function handleUiClick(click) {
   if (button.action === "enterNearbyTown") {
     if (game.nearTown) {
       enterTown(game, game.nearTown);
+      updateTutorial(game, { type: "enterTown" });
     }
     return true;
   }
@@ -300,6 +321,7 @@ function handleUiClick(click) {
         clearEnemyArmyPreview(game.ui);
         clearUnitPath(game.player);
         addWarReport(game, "我军正在攻击 " + game.nearTown.name, "good");
+        updateTutorial(game, { type: "siegeStart" });
         startBattle(game, { type: "siege", enemy: game.nearTown, town: game.nearTown });
       }
     }
@@ -413,6 +435,7 @@ function updatePlayerMovement(dt, click) {
     releaseCamera(game.camera);
     updateFacing(game.player, movement.dx, movement.dy);
     movePlayerBy(movement.dx, movement.dy, dt);
+    updateTutorial(game, { type: "move" });
   } else if (game.player.target) {
     var terrain = getTile(game.map, game.player.x, game.player.y);
     var speed = CONFIG.playerSpeed * WORLD_MOVE_SPEED_MULTIPLIER * terrain.speed;
@@ -430,6 +453,7 @@ function updatePlayerMovement(dt, click) {
     }
     if (arrived || distanceXY(game.player.x, game.player.y, game.player.target.x, game.player.target.y) < CONFIG.clickArriveDistance) {
       advancePlayerPath();
+      updateTutorial(game, { type: "move" });
     }
   }
 
@@ -442,6 +466,7 @@ function updatePlayerMovement(dt, click) {
       updateFacing(game.player, world.x - game.player.x, world.y - game.player.y);
       releaseCamera(game.camera);
       game.message = "部队正在行军……";
+      updateTutorial(game, { type: "move" });
     } else {
       game.message = "山体无法通行";
     }
@@ -506,12 +531,14 @@ function handleWorldInteractions() {
   var nearTown = findNearestTown(game.map, game.player.x, game.player.y, CONFIG.interactDistance);
   game.nearTown = nearTown || null;
   if (nearTown) {
+    updateTutorial(game, { type: "nearTown" });
     var factionName = nearTown.owner === "player" ? "我方" : "敌方";
     game.message = "靠近 " + nearTown.name + "（" + factionName + "）— 按 E 进入，按 R 攻城";
 
     if (consumeKey(input, "e")) {
       clearUnitPath(game.player);
       enterTown(game, nearTown);
+      updateTutorial(game, { type: "enterTown" });
       return;
     }
     if (consumeKey(input, "r")) {
@@ -522,6 +549,7 @@ function handleWorldInteractions() {
         clearEnemyArmyPreview(game.ui);
         clearUnitPath(game.player);
         addWarReport(game, "我军正在攻击 " + nearTown.name, "good");
+        updateTutorial(game, { type: "siegeStart" });
         startBattle(game, { type: "siege", enemy: nearTown, town: nearTown });
       }
       return;
@@ -600,6 +628,7 @@ function openEncounter(enemy) {
   game.encounter = { enemy: enemy };
   game.state = "encounter";
   game.message = "遭遇 " + enemy.name;
+  updateTutorial(game, { type: "encounter" });
 }
 
 function acceptEncounter() {
@@ -669,6 +698,9 @@ function loadIntoCurrentGame(source, slotIndex) {
     return;
   }
   applySaveToGame(game, data);
+  game.tutorial = data.tutorial
+    ? normalizeTutorialState(data.tutorial)
+    : createTutorialState({ enabled: false });
   game.fog = restoreFogOfWar(game.map, data.fog, game.player);
   game.mapUi = {
     miniMap: createMiniMapState(),
@@ -733,8 +765,9 @@ function startNewGame() {
     clearEnemyArmyPreview(game.ui);
   }
   game.notice = null;
+  game.tutorial = createTutorialState({ enabled: true });
   game.message = "点击地面移动，WASD 行军。靠近城镇按 E 进入，按 R 攻城。";
-  game.log = ["探索大陆、招募扩军、攻城收税、统一全境", "提示：ESC 打开军务菜单 | F5 保存 | F9 读档"];
+  game.log = ["探索大陆、招募扩军、攻城收税、统一全境", "提示：ESC 打开军务菜单 | F9 读档 | 设置中可保存"];
   game.reports = [];
   game.settings = loadSettings();
   game.previousState = null;
