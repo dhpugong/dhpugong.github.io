@@ -21,6 +21,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   min-height: 100%;
 }
@@ -290,13 +294,6 @@ h1 span {
   box-shadow: 0 0 18px rgba(255, 209, 102, 0.5);
 }
 
-.duel-floor,
-.stickman,
-.stick-head,
-.stick-body,
-.stick-arm,
-.stick-leg,
-.impact-flash,
 .network-line,
 .network-node,
 .loss-curve,
@@ -305,98 +302,6 @@ h1 span {
 .reward-dot,
 .policy-arrow {
   position: absolute;
-}
-
-.duel-floor {
-  left: 18px;
-  right: 18px;
-  bottom: 18px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(128, 255, 114, 0.72), transparent);
-}
-
-.stickman {
-  width: 52px;
-  height: 60px;
-  bottom: 18px;
-}
-
-.fighter-left {
-  left: 38px;
-  color: var(--green);
-}
-
-.fighter-right {
-  right: 38px;
-  color: var(--blue);
-  transform: scaleX(-1);
-}
-
-.stick-head {
-  width: 16px;
-  aspect-ratio: 1;
-  left: 18px;
-  top: 2px;
-  border: 3px solid currentColor;
-  border-radius: 50%;
-  box-shadow: 0 0 16px currentColor;
-}
-
-.stick-body,
-.stick-arm,
-.stick-leg {
-  width: 3px;
-  border-radius: 999px;
-  background: currentColor;
-  box-shadow: 0 0 12px currentColor;
-  transform-origin: top center;
-}
-
-.stick-body {
-  height: 24px;
-  left: 25px;
-  top: 18px;
-}
-
-.stick-arm {
-  height: 24px;
-  left: 25px;
-  top: 24px;
-}
-
-.arm-front {
-  transform: rotate(-72deg);
-}
-
-.arm-back {
-  transform: rotate(48deg);
-  opacity: 0.72;
-}
-
-.stick-leg {
-  height: 24px;
-  left: 25px;
-  top: 40px;
-}
-
-.leg-front {
-  transform: rotate(-32deg);
-}
-
-.leg-back {
-  transform: rotate(35deg);
-  opacity: 0.72;
-}
-
-.impact-flash {
-  left: 50%;
-  top: 36px;
-  width: 34px;
-  height: 18px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  clip-path: polygon(0 45%, 38% 38%, 48% 0, 58% 38%, 100% 45%, 62% 56%, 51% 100%, 42% 58%);
-  transform: translateX(-50%);
-  filter: drop-shadow(0 0 14px rgba(245, 212, 107, 0.74));
 }
 
 .rpg-visual {
