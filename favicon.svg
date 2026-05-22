@@ -1,22 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Snake game icon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Navigation page icon">
   <defs>
-    <linearGradient id="snakeGradient" x1="25" y1="94" x2="96" y2="30" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#36bc73" />
-      <stop offset="0.48" stop-color="#84f06a" />
-      <stop offset="1" stop-color="#58c7ff" />
+    <linearGradient id="bg" x1="14" y1="18" x2="112" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#e8f3ff" />
     </linearGradient>
-    <radialGradient id="boardGlow" cx="50%" cy="42%" r="68%">
-      <stop offset="0" stop-color="#263842" />
-      <stop offset="1" stop-color="#10171b" />
-    </radialGradient>
+    <linearGradient id="accent" x1="30" y1="96" x2="96" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#18a76a" />
+      <stop offset="0.58" stop-color="#1877d4" />
+      <stop offset="1" stop-color="#d99a16" />
+    </linearGradient>
   </defs>
-  <rect width="128" height="128" rx="28" fill="url(#boardGlow)" />
-  <path d="M24 32H104M24 64H104M24 96H104M32 24V104M64 24V104M96 24V104" stroke="#34414a" stroke-width="2" stroke-linecap="round" opacity="0.36" />
-  <circle cx="30" cy="34" r="8" fill="#ffd166" />
-  <path d="M31 94C49 105 82 99 82 77C82 59 48 64 48 45C48 28 70 22 92 32" fill="none" stroke="url(#snakeGradient)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
-  <g transform="translate(94 33) rotate(18)">
-    <rect x="-11" y="-10" width="29" height="22" rx="11" fill="#b8ff87" />
-    <circle cx="8" cy="-3" r="2.3" fill="#08100c" />
-    <circle cx="8" cy="5" r="2.3" fill="#08100c" />
-  </g>
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#bg)" />
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="none" stroke="#cfe0eb" stroke-width="4" />
+  <path d="M33 43H95M33 64H83M33 85H70" fill="none" stroke="#60717f" stroke-width="8" stroke-linecap="round" />
+  <circle cx="33" cy="43" r="8" fill="#18a76a" />
+  <circle cx="33" cy="64" r="8" fill="#1877d4" />
+  <circle cx="33" cy="85" r="8" fill="#d99a16" />
+  <path d="M83 77L99 64L83 51" fill="none" stroke="url(#accent)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
 </svg>

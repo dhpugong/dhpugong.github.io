@@ -12,16 +12,38 @@
 
 <body>
   <main class="site-shell" aria-label="导航页">
-    <header class="hero" aria-label="站点概览">
+    <header class="hero" aria-label="个人名片">
       <div class="hero-copy">
-        <p class="eyebrow"><span></span>Navigation</p>
-        <h1>导航页</h1>
+        <p class="eyebrow"><span></span>Profile</p>
+        <div class="profile-mark" aria-hidden="true">p</div>
+        <h1>pugong</h1>
+        <p class="hero-note">整理浏览器小游戏、Canvas 实验和网页练习的个人空间。</p>
+        <a class="profile-link" href="https://dhpugong.com" target="_blank" rel="noopener">dhpugong.com</a>
+        <div class="visit-counter" aria-label="访问次数">
+          <span>访问次数</span>
+          <strong><span id="busuanzi_value_site_pv">--</span><em>次</em></strong>
+        </div>
+        <div class="profile-signal" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+
+      <div class="profile-tags" aria-label="个人标签">
+        <span>Web</span>
+        <span>Canvas</span>
+        <span>Game AI</span>
+        <span>Strategy</span>
       </div>
     </header>
 
     <section class="projects-section" aria-labelledby="projects-title">
       <div class="section-heading">
         <p class="eyebrow" id="projects-title">Projects</p>
+        <h2>项目入口</h2>
       </div>
 
       <div class="project-grid">
@@ -33,16 +55,18 @@
             <span class="snake-segment body body-3"></span>
             <span class="food-dot"></span>
           </div>
-          <div class="card-topline">
-            <span class="status ready">可体验</span>
-            <span class="project-type">Game AI</span>
-          </div>
-          <h3>AI 贪吃蛇</h3>
-          <p>多种 AI 策略控制蛇移动，并用评分系统比较表现。</p>
-          <div class="tag-list" aria-label="技术标签">
-            <span>Canvas</span>
-            <span>BFS</span>
-            <span>强化学习</span>
+          <div class="project-content">
+            <div class="card-topline">
+              <span class="status ready">可体验</span>
+              <span class="project-type">Game AI</span>
+            </div>
+            <h3>AI 贪吃蛇</h3>
+            <p>多种 AI 策略控制蛇移动，并用评分系统比较表现。</p>
+            <div class="tag-list" aria-label="技术标签">
+              <span>Canvas</span>
+              <span>BFS</span>
+              <span>强化学习</span>
+            </div>
           </div>
           <a class="card-action" href="snake/">打开项目</a>
         </article>
@@ -57,16 +81,18 @@
             <span class="rpg-enemy"></span>
             <span class="rpg-banner"></span>
           </div>
-          <div class="card-topline">
-            <span class="status ready">可体验</span>
-            <span class="project-type">Strategy RPG</span>
-          </div>
-          <h3>铁冠诸侯</h3>
-          <p>像素风策略 RPG：探索大陆、自动战斗、招募扩军、攻城收税并统一全境。</p>
-          <div class="tag-list" aria-label="技术标签">
-            <span>Canvas</span>
-            <span>ES Modules</span>
-            <span>策略RPG</span>
+          <div class="project-content">
+            <div class="card-topline">
+              <span class="status ready">可体验</span>
+              <span class="project-type">Strategy RPG</span>
+            </div>
+            <h3>铁冠诸侯</h3>
+            <p>像素风策略 RPG：探索大陆、自动战斗、招募扩军、攻城收税并统一全境。</p>
+            <div class="tag-list" aria-label="技术标签">
+              <span>Canvas</span>
+              <span>ES Modules</span>
+              <span>策略RPG</span>
+            </div>
           </div>
           <a class="card-action" href="strategy-rpg/">打开项目</a>
         </article>
@@ -82,15 +108,17 @@
             <span class="network-node node-d"></span>
             <span class="loss-curve"></span>
           </div>
-          <div class="card-topline">
-            <span class="status planned">计划中</span>
-            <span class="project-type">Deep Learning</span>
-          </div>
-          <h3>神经网络 Playground</h3>
-          <p>观察参数调整后分类边界与损失曲线的变化。</p>
-          <div class="tag-list" aria-label="技术标签">
-            <span>神经网络</span>
-            <span>训练可视化</span>
+          <div class="project-content">
+            <div class="card-topline">
+              <span class="status planned">计划中</span>
+              <span class="project-type">Deep Learning</span>
+            </div>
+            <h3>神经网络 Playground</h3>
+            <p>观察参数调整后分类边界与损失曲线的变化。</p>
+            <div class="tag-list" aria-label="技术标签">
+              <span>神经网络</span>
+              <span>训练可视化</span>
+            </div>
           </div>
           <span class="card-action disabled" aria-disabled="true">计划中</span>
         </article>
@@ -105,21 +133,24 @@
             <span class="policy-arrow arrow-a"></span>
             <span class="policy-arrow arrow-b"></span>
           </div>
-          <div class="card-topline">
-            <span class="status planned">计划中</span>
-            <span class="project-type">RL</span>
-          </div>
-          <h3>强化学习迷宫</h3>
-          <p>展示智能体通过奖励、探索和策略迭代学习路径。</p>
-          <div class="tag-list" aria-label="技术标签">
-            <span>Q-learning</span>
-            <span>策略迭代</span>
+          <div class="project-content">
+            <div class="card-topline">
+              <span class="status planned">计划中</span>
+              <span class="project-type">RL</span>
+            </div>
+            <h3>强化学习迷宫</h3>
+            <p>展示智能体通过奖励、探索和策略迭代学习路径。</p>
+            <div class="tag-list" aria-label="技术标签">
+              <span>Q-learning</span>
+              <span>策略迭代</span>
+            </div>
           </div>
           <span class="card-action disabled" aria-disabled="true">计划中</span>
         </article>
       </div>
     </section>
   </main>
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 </body>
 
 </html>
