@@ -6,11 +6,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>导航页</title>
   <meta name="description" content="导航页" />
+  <script>
+    (() => {
+      let storedTheme = null;
+      try {
+        storedTheme = localStorage.getItem("pugong-theme");
+      } catch (error) {
+        storedTheme = null;
+      }
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = storedTheme || (prefersDark ? "night" : "day");
+    })();
+  </script>
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 </head>
 
 <body>
+  <button class="theme-toggle" type="button" aria-label="切换夜晚主题" aria-pressed="false">
+    <span class="theme-toggle-icon" aria-hidden="true"></span>
+    <span class="theme-toggle-text">夜晚</span>
+  </button>
   <main class="site-shell" aria-label="导航页">
     <header class="hero" aria-label="个人名片">
       <div class="hero-copy">
@@ -151,6 +167,36 @@
       </div>
     </section>
   </main>
+  <script>
+    (() => {
+      const themeButton = document.querySelector(".theme-toggle");
+      if (!themeButton) return;
+
+      const themeText = themeButton.querySelector(".theme-toggle-text");
+      const initialTheme = document.documentElement.dataset.theme || "day";
+
+      const setTheme = (theme) => {
+        const isNight = theme === "night";
+        document.documentElement.dataset.theme = theme;
+        document.body.dataset.theme = theme;
+        themeButton.setAttribute("aria-pressed", String(isNight));
+        themeButton.setAttribute("aria-label", isNight ? "切换白天主题" : "切换夜晚主题");
+        themeText.textContent = isNight ? "白天" : "夜晚";
+      };
+
+      setTheme(initialTheme);
+
+      themeButton.addEventListener("click", () => {
+        const nextTheme = document.body.dataset.theme === "night" ? "day" : "night";
+        try {
+          localStorage.setItem("pugong-theme", nextTheme);
+        } catch (error) {
+          console.warn(error);
+        }
+        setTheme(nextTheme);
+      });
+    })();
+  </script>
   <script>
     (async () => {
       const poemElement = document.querySelector("#daily-poem");
