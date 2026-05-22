@@ -17,33 +17,34 @@
         <p class="eyebrow"><span></span>Profile</p>
         <div class="profile-mark" aria-hidden="true">p</div>
         <h1>pugong</h1>
-        <p class="hero-note">整理浏览器小游戏、Canvas 实验和网页练习的个人空间。</p>
+        <p class="hero-note daily-poem" id="daily-poem" aria-label="诗句一言">
+          <span class="poem-label">诗句一言</span>
+          <span class="poem-text">山重水复疑无路，柳暗花明又一村。</span>
+          <cite class="poem-source">陆游《游山西村》</cite>
+        </p>
         <a class="profile-link" href="https://dhpugong.com" target="_blank" rel="noopener">dhpugong.com</a>
         <div class="visit-counter" aria-label="访问次数">
           <span>访问次数</span>
-          <strong><span id="busuanzi_value_site_pv">--</span><em>次</em></strong>
-        </div>
-        <div class="profile-signal" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
+          <strong><span id="busuanzi_site_pv">加载中</span><em>次</em></strong>
         </div>
       </div>
 
-      <div class="profile-tags" aria-label="个人标签">
-        <span>Web</span>
-        <span>Canvas</span>
-        <span>Game AI</span>
-        <span>Strategy</span>
+      <div class="profile-signal" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
       </div>
     </header>
 
     <section class="projects-section" aria-labelledby="projects-title">
       <div class="section-heading">
-        <p class="eyebrow" id="projects-title">Projects</p>
-        <h2>项目入口</h2>
+        <div>
+          <p class="eyebrow" id="projects-title">Projects</p>
+          <h2>作品索引</h2>
+        </div>
+        <span class="section-count" aria-label="当前上线 2 个项目">2 Live</span>
       </div>
 
       <div class="project-grid">
@@ -150,7 +151,36 @@
       </div>
     </section>
   </main>
-  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+  <script>
+    (async () => {
+      const poemElement = document.querySelector("#daily-poem");
+      if (!poemElement) return;
+
+      const textElement = poemElement.querySelector(".poem-text");
+      const sourceElement = poemElement.querySelector(".poem-source");
+
+      try {
+        poemElement.classList.add("is-loading");
+        const response = await fetch(`https://v1.jinrishici.com/all.json?_=${Date.now()}`, {
+          cache: "no-store"
+        });
+        if (!response.ok) throw new Error("Poem API request failed");
+
+        const poem = await response.json();
+        if (!poem.content) throw new Error("Poem API returned empty content");
+
+        textElement.textContent = poem.content;
+        sourceElement.textContent = poem.author && poem.origin
+          ? `${poem.author}《${poem.origin}》`
+          : poem.origin || poem.author || "古诗词一言";
+      } catch (error) {
+        console.warn(error);
+      } finally {
+        poemElement.classList.remove("is-loading");
+      }
+    })();
+  </script>
+  <script defer src="https://cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.min.js"></script>
 </body>
 
 </html>
